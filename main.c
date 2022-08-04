@@ -49,10 +49,7 @@ bool getgrouplist_(char *user, gid_t group, gid_t **groups_, int *ngroups_) {
 	*ngroups_ = ngroups;
 	return 1;
 }
-bool password_check(uid_t my_uid) {
-	struct passwd *pw = getpwuid(my_uid);
-	if (errno) { eprintf("getpwuid: %s\n",        strerr); return 0; }
-	if (!pw)   { eprintf("Cannot find user %i\n", my_uid); return 0; }
+bool password_check(struct passwd *pw) {
 	char *p = pw->pw_passwd;
 	if (p[0] == 'x' && p[1] == '\0') {
 		errno = 0;
@@ -94,31 +91,6 @@ int main(int argc, char *argv[]) {
 #ifndef DEBUG
 	if (geteuid() != 0) {
 		eprintf("Must run as setuid root\n"); return 1;
-	}
-	uid_t my_uid = getuid();
-	errno = 0;
-	struct passwd *pwd_ = getpwuid(my_uid);
-	if (errno) { eprintf("getpwuid: %s\n",        strerr); return errno; }
-	if (!pwd_) { eprintf("Cannot find user %i\n", my_uid); return 1; }
-	gid_t *groups;
-	int ngroups;
-	if (!getgrouplist_(pwd_->pw_name, pwd_->pw_gid, &groups, &ngroups)) {
-		eprintf("Failed to get your groups\n"); return 1;
-	}
-	bool has_group = 0;
-	for (int i = 0; i < ngroups; ++i) {
-		errno = 0;
-		struct group *grp = getgrgid(groups[i]);
-		if (errno) { eprintf("getgrgid: %s\n",         strerr); return errno; }
-		if (!grp)  { eprintf("Cannot find group %i\n", my_uid); return 1; }
-		if (strcmp(grp->gr_name, ODUS_GROUP) == 0) {
-			has_group = 1;
-			break;
-		}
-	}
-	if (!has_group) {
-		eprintf("%s is not in group %s\n", pwd_->pw_name, ODUS_GROUP);
-		return 1;
 	}
 #endif
 	if (argc <= 1) INVALID;
@@ -176,8 +148,33 @@ int main(int argc, char *argv[]) {
 		printf("argv[%i]: %s\n", i, cmd_argv[i]);
 	}
 #else
+	uid_t my_uid = getuid();
 	errno = 0;
-	if (password_check(my_uid) != 1) {
+	struct passwd *pwd_ = getpwuid(my_uid);
+	if (errno) { eprintf("getpwuid: %s\n",        strerr); return errno; }
+	if (!pwd_) { eprintf("Cannot find user %i\n", my_uid); return 1; }
+	gid_t *groups;
+	int ngroups;
+	if (!getgrouplist_(pwd_->pw_name, pwd_->pw_gid, &groups, &ngroups)) {
+		eprintf("Failed to get your groups\n"); return 1;
+	}
+	bool has_group = 0;
+	for (int i = 0; i < ngroups; ++i) {
+		errno = 0;
+		struct group *grp = getgrgid(groups[i]);
+		if (errno) { eprintf("getgrgid: %s\n",         strerr); return errno; }
+		if (!grp)  { eprintf("Cannot find group %i\n", my_uid); return 1; }
+		if (strcmp(grp->gr_name, ODUS_GROUP) == 0) {
+			has_group = 1;
+			break;
+		}
+	}
+	if (!has_group) {
+		eprintf("%s is not in group %s\n", pwd_->pw_name, ODUS_GROUP);
+		return 1;
+	}
+	errno = 0;
+	if (password_check(pwd_) != 1) {
 		if (errno) return errno;
 		return 1;
 	}
