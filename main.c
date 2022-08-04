@@ -1,0 +1,97 @@
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
+#if HAVE_SHADOW_H
+#include <shadow.h>
+#endif
+#define ODUS_GROUP "odus"
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define strerr strerror(errno)
+#define DEBUG
+int usage(char *argv0) {
+	eprintf("\
+Usage: %s [options] [command] [argv]...\n\
+	-u --user [user] : the user to run as, defaults to UID 0, which is usually root\n\
+		if numeric, it'll find a user with the UID, otherwise with that name\n\
+", argv0);
+	return 2;
+}
+bool to_name_or_id(char *str, uid_t *out) {
+	bool numeric = 1;
+	size_t len = strlen(str);
+	for (size_t i = 0; i < len; ++i) {
+		if (str[i] < '0' || str[i] > '9') { numeric = 0; break; }
+	}
+	if (numeric) *out = atol(str);
+	return numeric;
+}
+int main(int argc, char* argv[]) {
+#define INVALID return usage(argv[0]);
+#ifndef DEBUG
+	if (geteuid() != 0) {
+		eprintf("Must run as setuid root\n"); return 1;
+	}
+	// check if in group here
+#endif
+	if (argc <= 1) INVALID;
+	char* user_str = NULL;
+	char* cmd_argv[argc];
+	int cmd_argc = 0;
+	bool user_flag = 0;
+	bool flag_done = 0;
+	for (int i = 1; i < argc; ++i) {
+		if (user_flag) {
+			user_str = argv[i];
+			user_flag = 0;
+		} else if (argv[i][0] == '-' && argv[i][1] != '\0' && !flag_done) {
+			if (argv[i][1] == '-' && argv[i][2] == '\0') flag_done = 1; // -- denotes end of flags
+			else if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--user") == 0) {
+				if (user_str) INVALID;
+				user_flag = 1;
+			} else
+			INVALID;
+		} else {
+			flag_done = 1;
+			cmd_argv[cmd_argc++] = argv[i]; // add to argv
+		}
+	}
+	if (cmd_argc <= 0) INVALID;
+	cmd_argv[cmd_argc] = NULL;
+	bool user_numeric = 1;
+	uid_t user_id;
+	if (user_str) user_numeric = to_name_or_id(user_str, &user_id);
+	else user_id = 0;
+	errno = 0;
+	struct passwd *pwd;
+	if (user_numeric) {
+		pwd = getpwuid(user_id);
+		if (errno) { eprintf("getpwuid: %s\n", strerr); return errno; }
+		if (!pwd) { eprintf("Cannot find uid %i\n",  user_id);  return 1; }
+	} else {
+		pwd = getpwnam(user_str);
+		if (errno) { eprintf("getpwnam: %s\n", strerr); return errno; }
+		if (!pwd) { eprintf("Cannot find user %s\n", user_str); return 1; }
+	}
+#ifdef DEBUG
+	printf("user: %s\n", pwd->pw_name);
+	printf("uid: %i\n", pwd->pw_uid);
+	printf("gid: %i\n", pwd->pw_gid);
+	printf("argc: %i\n", cmd_argc);
+	for (int i = 0; i < cmd_argc; ++i) {
+		printf("argv[%i]: %s\n", i, cmd_argv[i]);
+	}
+#else
+	if (setuid(pwd->pw_uid)  != 0) { eprintf("setuid: %s\n",  strerr); return errno; }
+	if (setgid(pwd->pw_gid)  != 0) { eprintf("setgid: %s\n",  strerr); return errno; }
+	if (seteuid(pwd->pw_uid) != 0) { eprintf("seteuid: %s\n", strerr); return errno; }
+	if (setegid(pwd->pw_gid) != 0) { eprintf("setegid: %s\n", strerr); return errno; }
+	execvp(cmd_argv[0], cmd_argv);
+	eprintf("execvp: %s\n", strerr);
+#endif
+	return 0;
+}
