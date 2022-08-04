@@ -12,7 +12,7 @@
 #define ODUS_GROUP "odus"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr strerror(errno)
-#define DEBUG
+//#define DEBUG
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [options] [command] [argv]...\n\
@@ -21,7 +21,8 @@ Usage: %s [options] [command] [argv]...\n\
 ", argv0);
 	return 2;
 }
-bool to_name_or_id(char *str, uid_t *out) {
+bool to_name_or_id(char *str, long *out) {
+	// if all characters in str are numbers, convert to a long, otherwise leave as is
 	bool numeric = 1;
 	size_t len = strlen(str);
 	for (size_t i = 0; i < len; ++i) {
@@ -30,17 +31,59 @@ bool to_name_or_id(char *str, uid_t *out) {
 	if (numeric) *out = atol(str);
 	return numeric;
 }
-int main(int argc, char* argv[]) {
+bool getgrouplist_(char *user, gid_t group, gid_t **groups_, int *ngroups_) {
+	// getgrouplist but we don't know the size yet
+	int cur_ngroups = 0;
+	int result = -1;
+	int ngroups;
+	gid_t *groups = NULL;
+	while (result == -1) {
+		if (groups) free(groups);
+		cur_ngroups += 8;
+		groups = calloc(cur_ngroups, sizeof(gid_t));
+		ngroups = cur_ngroups;
+		result = getgrouplist(user, group, groups, &ngroups);
+	}
+	if (ngroups < 0) return 0;
+	*groups_ = groups;
+	*ngroups_ = ngroups;
+	return 1;
+}
+int main(int argc, char *argv[]) {
 #define INVALID return usage(argv[0]);
 #ifndef DEBUG
 	if (geteuid() != 0) {
 		eprintf("Must run as setuid root\n"); return 1;
 	}
-	// check if in group here
+	uid_t my_uid = getuid();
+	errno = 0;
+	struct passwd *pwd_ = getpwuid(my_uid);
+	if (errno) { eprintf("getpwuid: %s\n",        strerr); return errno; }
+	if (!pwd_) { eprintf("Cannot find user %i\n", my_uid); return 1; }
+	gid_t *groups;
+	int ngroups;
+	if (!getgrouplist_(pwd_->pw_name, pwd_->pw_gid, &groups, &ngroups)) {
+		eprintf("Failed to get your groups\n"); return 1;
+	}
+	bool has_group = 0;
+	for (int i = 0; i < ngroups; ++i) {
+		errno = 0;
+		struct group *grp = getgrgid(groups[i]);
+		if (errno) { eprintf("getgrgid: %s\n",         strerr); return errno; }
+		if (!grp)  { eprintf("Cannot find group %i\n", my_uid); return 1; }
+		if (strcmp(grp->gr_name, ODUS_GROUP) == 0) {
+			has_group = 1;
+			break;
+		}
+	}
+	if (!has_group) {
+		eprintf("`%s` is not in the `%s` group\n", pwd_->pw_name, ODUS_GROUP);
+		return 1;
+	}
 #endif
 	if (argc <= 1) INVALID;
-	char* user_str = NULL;
-	char* cmd_argv[argc];
+	char *user_str = NULL;
+	char *cmd_argv[argc];
 	int cmd_argc = 0;
 	bool user_flag = 0;
 	bool flag_done = 0;
@@ -64,18 +107,19 @@ int main(int argc, char* argv[]) {
 	cmd_argv[cmd_argc] = NULL;
 	bool user_numeric = 1;
 	uid_t user_id;
-	if (user_str) user_numeric = to_name_or_id(user_str, &user_id);
+	long a;
+	if (user_str) { user_numeric = to_name_or_id(user_str, &a); user_id = a; }
 	else user_id = 0;
-	errno = 0;
 	struct passwd *pwd;
+	errno = 0;
 	if (user_numeric) {
 		pwd = getpwuid(user_id);
-		if (errno) { eprintf("getpwuid: %s\n", strerr); return errno; }
-		if (!pwd) { eprintf("Cannot find uid %i\n",  user_id);  return 1; }
+		if (errno) { eprintf("getpwuid: %s\n",        strerr);   return errno; }
+		if (!pwd)  { eprintf("Cannot find user %i\n", user_id);  return 1; }
 	} else {
 		pwd = getpwnam(user_str);
-		if (errno) { eprintf("getpwnam: %s\n", strerr); return errno; }
-		if (!pwd) { eprintf("Cannot find user %s\n", user_str); return 1; }
+		if (errno) { eprintf("getpwnam: %s\n",        strerr);   return errno; }
+		if (!pwd)  { eprintf("Cannot find user %s\n", user_str); return 1; }
 	}
 #ifdef DEBUG
 	printf("user: %s\n", pwd->pw_name);
