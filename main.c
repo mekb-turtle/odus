@@ -8,17 +8,20 @@
 #include <grp.h>
 #include <shadow.h>
 #include <stdint.h>
+#include <limits.h>
 #define ODUS_GROUP "odus"
 #define PROMPT "[odus] password for %s: "
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
-#define strerr strerror(errno)
+#define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [options] [command] [argv]...\n\
-	-l --login : set HOME and USER environment variables\n\
+	-k --keep : keep environment variables\n\
+		HOME, USER, and PWD are set by default\n\
+	-c --cwd : set current working directory to the home directory\n\
 	-u --user [user] : the user to run as, defaults to UID 0, which is usually root\n\
-	           if numeric, it'll find a user with the UID, otherwise with that name\n\
+		if numeric, it'll find a user with the UID, otherwise with that name\n\
 ", argv0);
 	return 2;
 }
@@ -122,11 +125,12 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 	if (argc <= 1) INVALID;
-	char *user_str = NULL;
 	char *cmd_argv[argc];
 	int cmd_argc = 0;
+	char *user_str = NULL;
 	bool user_flag = 0;
-	bool login_flag = 0;
+	bool keep_flag = 0;
+	bool cwd_flag = 0;
 	bool flag_done = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (user_flag) {
@@ -138,9 +142,13 @@ int main(int argc, char *argv[]) {
 				if (user_str) INVALID;
 				user_flag = 1;
 			} else
-			if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--login") == 0) {
-				if (login_flag) INVALID;
-				login_flag = 1;
+			if (strcmp(argv[i], "-k") == 0 || strcmp(argv[i], "--keep") == 0) {
+				if (keep_flag) INVALID;
+				keep_flag = 1;
+			} else
+			if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--cwd") == 0) {
+				if (cwd_flag) INVALID;
+				cwd_flag = 1;
 			} else
 			INVALID;
 		} else {
@@ -175,6 +183,9 @@ int main(int argc, char *argv[]) {
 		printf("argv[%i]: %s\n", i, cmd_argv[i]);
 	}
 #else
+	if (!keep_flag) {
+		clearenv();
+	}
 	uid_t my_uid = getuid();
 	errno = 0;
 	struct passwd *my_pwd = getpwuid(my_uid);
@@ -212,15 +223,25 @@ int main(int argc, char *argv[]) {
 	if (!getgrouplist_(pwd->pw_name, pwd->pw_gid, &groups, &ngroups)) {
 		eprintf("Failed to get groups of %s\n", pwd->pw_name); return 1;
 	}
-	errno = 0; if (setgroups(ngroups, groups) != 0) { eprintf("setgroups: %s\n", strerr); return errno; }
-	errno = 0; if (setuid(pwd->pw_uid)        != 0) { eprintf("setuid: %s\n",    strerr); return errno; }
-	errno = 0; if (setgid(pwd->pw_gid)        != 0) { eprintf("setgid: %s\n",    strerr); return errno; }
-	errno = 0; if (seteuid(pwd->pw_uid)       != 0) { eprintf("seteuid: %s\n",   strerr); return errno; }
-	errno = 0; if (setegid(pwd->pw_gid)       != 0) { eprintf("setegid: %s\n",   strerr); return errno; }
-	if (login_flag) {
-		setenv("HOME", pwd->pw_dir, 1);
-		setenv("USER", pwd->pw_name, 1);
+	errno = 0; if (setgroups(ngroups, groups) != 0) { eprintf("setgroups: %s\n", strerr); return errno || 1; }
+	errno = 0; if (setuid(pwd->pw_uid)        != 0) { eprintf("setuid: %s\n",    strerr); return errno || 1; }
+	errno = 0; if (setgid(pwd->pw_gid)        != 0) { eprintf("setgid: %s\n",    strerr); return errno || 1; }
+	errno = 0; if (seteuid(pwd->pw_uid)       != 0) { eprintf("seteuid: %s\n",   strerr); return errno || 1; }
+	errno = 0; if (setegid(pwd->pw_gid)       != 0) { eprintf("setegid: %s\n",   strerr); return errno || 1; }
+	errno = 0;
+	if (cwd_flag) {
+		chdir(pwd->pw_dir);
+		if (errno) { eprintf("chdir: %s\n",  strerr); return errno; }
+		setenv("PWD", pwd->pw_dir, 1);
+	} else {
+		char *cwd = malloc(PATH_MAX);
+		if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
+		getcwd(cwd, PATH_MAX);
+		if (errno) { eprintf("getcwd: %s\n", strerr); return errno; }
+		setenv("PWD", cwd, 1);
 	}
+	setenv("HOME", pwd->pw_dir, 1);
+	setenv("USER", pwd->pw_name, 1);
 	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);
 	eprintf("execvp: %s: %s\n", cmd_argv[0], strerr);
