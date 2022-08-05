@@ -7,7 +7,9 @@
 #include <pwd.h>
 #include <grp.h>
 #include <shadow.h>
+#include <stdint.h>
 #define ODUS_GROUP "odus"
+#define PROMPT "[odus] password for %s: "
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr strerror(errno)
 //#define DEBUG
@@ -16,7 +18,7 @@ int usage(char *argv0) {
 Usage: %s [options] [command] [argv]...\n\
 	-l --login : set HOME and USER environment variables\n\
 	-u --user [user] : the user to run as, defaults to UID 0, which is usually root\n\
-		if numeric, it'll find a user with the UID, otherwise with that name\n\
+	           if numeric, it'll find a user with the UID, otherwise with that name\n\
 ", argv0);
 	return 2;
 }
@@ -64,8 +66,10 @@ bool password_check(struct passwd *pw) {
 	} else if (p[0] == '\0') {
 		return 1;
 	}
+	errno = 0;
 	char *prompt = malloc(100);
-	sprintf(prompt, "Password for %s: ", pw->pw_name);
+	if (errno) { eprintf("malloc: %s\n", strerr); return 0; }
+	sprintf(prompt, PROMPT, pw->pw_name);
 	for (int i = 0; i < 3; ++i) {
 		errno = 0;
 		char *input = getpass(prompt); // temporary, this function is obsolete
@@ -86,6 +90,30 @@ bool password_check(struct passwd *pw) {
 	return 0;
 }
 #endif
+char *clone_string(char *str) {
+	size_t l = strlen(str) + 1;
+	errno = 0;
+	char *clone = malloc(l);
+	if (errno) { eprintf("malloc: %s\n", strerr); return NULL; }
+	memcpy(clone, str, l);
+	if (errno) { eprintf("memcpy: %s\n", strerr); return NULL; }
+	return clone;
+}
+// copy the content of the pointer to another pointer because
+// getpwuid etc will reuse the same pointer
+struct passwd *clone_passwd(struct passwd *ptr) {
+	errno = 0;
+	struct passwd *clone = malloc(sizeof(struct passwd));
+	if (errno) { eprintf("malloc: %s\n", strerr); return NULL; }
+	if (!(clone->pw_name   = clone_string(ptr->pw_name)))   { free(clone); return NULL; }
+	if (!(clone->pw_passwd = clone_string(ptr->pw_passwd))) { free(clone); return NULL; }
+	clone->pw_uid = ptr->pw_uid;
+	clone->pw_gid = ptr->pw_gid;
+	if (!(clone->pw_gecos  = clone_string(ptr->pw_gecos)))  { free(clone); return NULL; }
+	if (!(clone->pw_dir    = clone_string(ptr->pw_dir)))    { free(clone); return NULL; }
+	if (!(clone->pw_shell  = clone_string(ptr->pw_shell)))  { free(clone); return NULL; }
+	return clone;
+}
 int main(int argc, char *argv[]) {
 #define INVALID return usage(argv[0]);
 #ifndef DEBUG
@@ -120,13 +148,11 @@ int main(int argc, char *argv[]) {
 			cmd_argv[cmd_argc++] = argv[i]; // add to argv
 		}
 	}
-	if (user_flag) INVALID;
 	if (cmd_argc <= 0) INVALID;
 	cmd_argv[cmd_argc] = NULL;
 	bool user_numeric = 1;
 	uid_t user_id;
-	long a;
-	if (user_str) { user_numeric = to_name_or_id(user_str, &a); user_id = a; }
+	if (user_str) { long a; user_numeric = to_name_or_id(user_str, &a); user_id = a; }
 	else user_id = 0;
 	struct passwd *pwd;
 	errno = 0;
@@ -139,6 +165,7 @@ int main(int argc, char *argv[]) {
 		if (errno) { eprintf("getpwnam: %s\n",        strerr);   return errno; }
 		if (!pwd)  { eprintf("Cannot find user %s\n", user_str); return 1; }
 	}
+	pwd = clone_passwd(pwd);
 #ifdef DEBUG
 	printf("user: %s\n", pwd->pw_name);
 	printf("uid: %i\n", pwd->pw_uid);
@@ -150,44 +177,53 @@ int main(int argc, char *argv[]) {
 #else
 	uid_t my_uid = getuid();
 	errno = 0;
-	struct passwd *pwd_ = getpwuid(my_uid);
-	if (errno) { eprintf("getpwuid: %s\n",        strerr); return errno; }
-	if (!pwd_) { eprintf("Cannot find user %i\n", my_uid); return 1; }
+	struct passwd *my_pwd = getpwuid(my_uid);
+	if (errno)   { eprintf("getpwuid: %s\n",        strerr); return errno; }
+	if (!my_pwd) { eprintf("Cannot find user %i\n", my_uid); return 1; }
+	my_pwd = clone_passwd(my_pwd);
 	gid_t *groups;
 	int ngroups;
-	if (!getgrouplist_(pwd_->pw_name, pwd_->pw_gid, &groups, &ngroups)) {
-		eprintf("Failed to get your groups\n"); return 1;
-	}
-	bool has_group = 0;
-	for (int i = 0; i < ngroups; ++i) {
-		errno = 0;
-		struct group *grp = getgrgid(groups[i]);
-		if (errno) { eprintf("getgrgid: %s\n",         strerr); return errno; }
-		if (!grp)  { eprintf("Cannot find group %i\n", my_uid); return 1; }
-		if (strcmp(grp->gr_name, ODUS_GROUP) == 0) {
-			has_group = 1;
-			break;
+	if (my_uid != 0) {
+		if (!getgrouplist_(my_pwd->pw_name, my_pwd->pw_gid, &groups, &ngroups)) {
+			eprintf("Failed to get groups of %s\n", my_pwd->pw_name); return 1;
 		}
+		bool has_group = 0;
+		for (int i = 0; i < ngroups; ++i) {
+			errno = 0;
+			struct group *grp = getgrgid(groups[i]);
+			if (errno) { eprintf("getgrgid: %s\n",         strerr); return errno; }
+			if (!grp)  { eprintf("Cannot find group %i\n", my_uid); return 1; }
+			if (strcmp(grp->gr_name, ODUS_GROUP) == 0) {
+				has_group = 1;
+				break;
+			}
+		}
+		if (!has_group) {
+			eprintf("%s is not in group %s\n", my_pwd->pw_name, ODUS_GROUP);
+			return 1;
+		}
+		errno = 0;
+		if (password_check(my_pwd) != 1) {
+			if (errno) return errno;
+			return 1;
+		}
+		free(groups);
 	}
-	if (!has_group) {
-		eprintf("%s is not in group %s\n", pwd_->pw_name, ODUS_GROUP);
-		return 1;
+	if (!getgrouplist_(pwd->pw_name, pwd->pw_gid, &groups, &ngroups)) {
+		eprintf("Failed to get groups of %s\n", pwd->pw_name); return 1;
 	}
-	errno = 0;
-	if (password_check(pwd_) != 1) {
-		if (errno) return errno;
-		return 1;
-	}
-	errno = 0; if (setuid(pwd->pw_uid)  != 0) { eprintf("setuid: %s\n",  strerr); return errno; }
-	errno = 0; if (setgid(pwd->pw_gid)  != 0) { eprintf("setgid: %s\n",  strerr); return errno; }
-	errno = 0; if (seteuid(pwd->pw_uid) != 0) { eprintf("seteuid: %s\n", strerr); return errno; }
-	errno = 0; if (setegid(pwd->pw_gid) != 0) { eprintf("setegid: %s\n", strerr); return errno; }
+	errno = 0; if (setgroups(ngroups, groups) != 0) { eprintf("setgroups: %s\n", strerr); return errno; }
+	errno = 0; if (setuid(pwd->pw_uid)        != 0) { eprintf("setuid: %s\n",    strerr); return errno; }
+	errno = 0; if (setgid(pwd->pw_gid)        != 0) { eprintf("setgid: %s\n",    strerr); return errno; }
+	errno = 0; if (seteuid(pwd->pw_uid)       != 0) { eprintf("seteuid: %s\n",   strerr); return errno; }
+	errno = 0; if (setegid(pwd->pw_gid)       != 0) { eprintf("setegid: %s\n",   strerr); return errno; }
 	if (login_flag) {
 		setenv("HOME", pwd->pw_dir, 1);
 		setenv("USER", pwd->pw_name, 1);
 	}
+	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);
-	eprintf("execvp: %s\n", strerr);
+	eprintf("execvp: %s: %s\n", cmd_argv[0], strerr);
 #endif
 	return 0;
 }
