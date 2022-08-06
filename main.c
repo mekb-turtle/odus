@@ -56,14 +56,12 @@ bool getgrouplist_(const char *user, gid_t group, gid_t **groups_, int *ngroups_
 	return 1;
 }
 char *getpass_(FILE *input, FILE *output, const char *prompt) { // code from util-linux
-	fputs(prompt, output);
 	int fd = fileno(input);
 	struct termios term_old, term_new, term_2;
 	if (isatty(fd)) {
 		if (tcgetattr(fd, &term_old) != 0) { eprintf("tcgetattr: %s\n", strerr); return NULL; }
 		term_new = term_old;
-		term_new.c_lflag &= ~ECHO;
-		term_new.c_lflag |= ECHONL;
+		term_new.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
 		errno = 0;
 		if (tcsetattr(fd, TCSANOW, &term_new) != 0) { eprintf("tcsetattr: %s\n", strerr); return NULL; }
 		if (tcgetattr(fd, &term_2) != 0) { eprintf("tcgetattr: %s\n", strerr); return NULL; }
@@ -71,16 +69,20 @@ char *getpass_(FILE *input, FILE *output, const char *prompt) { // code from uti
 	}
 	char *pass = NULL;
 	size_t n = 0;
+	fputs(prompt, output);
 	errno = 0;
 	ssize_t len = getline(&pass, &n, input);
 	int e = errno;
+	fputc('\n', output);
+	fflush(input);
+	fflush(output);
 	if (isatty(fd)) {
 		if (tcsetattr(fd, TCSANOW, &term_old) != 0) { eprintf("tcsetattr: %s\n", strerr); free(pass); return NULL; }
 		if (tcgetattr(fd, &term_2) != 0) { eprintf("tcgetattr: %s\n", strerr); free(pass); return NULL; }
 		if (term_2.c_lflag != term_old.c_lflag) { eprintf("tcsetattr failed\n"); free(pass); return NULL; }
 	}
 	errno = e;
-	if (len < 0) { eprintf("getline: %s\n", strerr); free(pass); return NULL; }
+	if (len < 0 && errno) { eprintf("getline: %s\n", strerr); free(pass); return 0; }
 	if (len > 0 && pass[len-1] == '\n') pass[len-1] = '\0';
 	return pass;
 }
@@ -107,6 +109,7 @@ bool password_check(struct passwd *pw) {
 		errno = 0;
 		char *input = getpass_(stdin, stdout, prompt);
 		if (!input) { return 0; }
+		if (feof(stdin)) return 0;
 		errno = 0;
 		char *c = crypt(input, p);
 		if (errno) { eprintf("crypt: %s\n", strerr); return 0; }
@@ -115,7 +118,6 @@ bool password_check(struct passwd *pw) {
 			return 1;
 		} else {
 			eprintf("Invalid password\n");
-			if (input[0] == '\0') return 0;
 			continue;
 		}
 	}
