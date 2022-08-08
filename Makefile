@@ -1,24 +1,35 @@
 CC=cc
+DESTDIR=/usr/local
 CFLAGS=-Wall -O2
-LFLAGS=-lm -lcrypt
+LFLAGS=-lm
+LFLAGS_ODUS=-lcrypt
 
-OBJS=main.o
+OBJS_LIBASKPASS=libaskpass.o
+OBJS_ASKPASS=$(OBJS_LIBASKPASS) askpass.o
+OBJS_ODUS=$(OBJS_LIBASKPASS) odus.o
 
-TARGET=odus
+TARGET_ASKPASS=askpass
+TARGET_ODUS=odus
 
-.PHONY: all clean
+.PHONY: all install clean
 
-all: $(TARGET)
+all: $(TARGET_ODUS) $(TARGET_ASKPASS)
 
-setuid:
-	chown 0:0 -- "$(TARGET)"
-	chmod ug+s -- "$(TARGET)"
-
-$(TARGET): $(OBJS)
+$(TARGET_ODUS): $(OBJS_ODUS)
+	$(CC) -o $@ $^ $(LFLAGS) $(LFLAGS_ODUS)
+$(TARGET_ASKPASS): $(OBJS_ASKPASS)
 	$(CC) -o $@ $^ $(LFLAGS)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
+install:
+	install -vDm6755 -- $(TARGET_ODUS) $(DESTDIR)/bin/
+	install -vDm0755 -- $(TARGET_ASKPASS) $(DESTDIR)/bin/
+
+uninstall:
+	cd -- $(DESTDIR)/bin/ && rm -fv -- $(TARGET_ODUS) $(TARGET_ASKPASS)
+
 clean:
-	rm -fv -- $(OBJS) $(TARGET)
+	rm -fv -- $(OBJS_LIBASKPASS) $(OBJS_ODUS) $(OBJS_ASKPASS) $(TARGET_ODUS) $(TARGET_ASKPASS)
+
