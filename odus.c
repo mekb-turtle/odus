@@ -12,6 +12,7 @@
 #include "./libaskpass.h"
 #define ODUS_GROUP "odus"
 #define PROMPT "[odus] password for %s: "
+#define DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
@@ -243,6 +244,9 @@ int main(int argc, char *argv[]) {
 	}
 	setenv("HOME", pwd->pw_dir, 1);
 	setenv("USER", pwd->pw_name, 1);
+	if (!keep_flag) {
+		setenv("PATH", DEFAULT_PATH, 1);
+	}
 	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);
 	eprintf("execvp: %s: %s\n", cmd_argv[0], strerr);
