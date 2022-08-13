@@ -251,5 +251,5 @@ int main(int argc, char *argv[]) {
 	execvp(cmd_argv[0], cmd_argv);
 	eprintf("execvp: %s: %s\n", cmd_argv[0], strerr);
 #endif
-	return 0;
+	return 1;
 }
