@@ -211,6 +211,7 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 		}
+		free(groups);
 		if (!has_group) {
 			eprintf("%s is not in group %s\n", my_pwd->pw_name, ODUS_GROUP);
 			return 1;
@@ -220,16 +221,15 @@ int main(int argc, char *argv[]) {
 			if (errno) return errno;
 			return 1;
 		}
-		free(groups);
 	}
 	if (!getgrouplist_(pwd->pw_name, pwd->pw_gid, &groups, &ngroups)) {
 		eprintf("Failed to get groups of %s\n", pwd->pw_name); return 1;
 	}
 	errno = 0; if (setgroups(ngroups, groups) != 0) { eprintf("setgroups: %s\n", strerr); return errno || 1; }
-	errno = 0; if (setuid(pwd->pw_uid)        != 0) { eprintf("setuid: %s\n",    strerr); return errno || 1; }
 	errno = 0; if (setgid(pwd->pw_gid)        != 0) { eprintf("setgid: %s\n",    strerr); return errno || 1; }
-	errno = 0; if (seteuid(pwd->pw_uid)       != 0) { eprintf("seteuid: %s\n",   strerr); return errno || 1; }
 	errno = 0; if (setegid(pwd->pw_gid)       != 0) { eprintf("setegid: %s\n",   strerr); return errno || 1; }
+	errno = 0; if (setuid(pwd->pw_uid)        != 0) { eprintf("setuid: %s\n",    strerr); return errno || 1; }
+	errno = 0; if (seteuid(pwd->pw_uid)       != 0) { eprintf("seteuid: %s\n",   strerr); return errno || 1; }
 	errno = 0;
 	if (cwd_flag) {
 		chdir(pwd->pw_dir);
