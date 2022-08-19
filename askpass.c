@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 	}
 	if (!prompt) prompt = "Password: ";
 	errno = 0;
-	char *input = askpass(stdin, stderr, prompt);
+	char *input = askpass(stdin, stderr, prompt, 0);
 	if (errno) { eprintf("askpass: %s\n", strerr); return 1; }
 	if (!input) return 1;
 	if (ferror(stdin) || feof(stdin)) return 2;

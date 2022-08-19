@@ -1,10 +1,11 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-char *askpass(FILE *input, FILE *output, const char *prompt) { // some code is from util-linux
+char *askpass(FILE *input, FILE *output, const char *prompt, bool echo) { // some code is from util-linux
 	errno = 0;
 	int input_fd = fileno(input);
 	if (input_fd < 0) return NULL;
@@ -17,7 +18,13 @@ char *askpass(FILE *input, FILE *output, const char *prompt) { // some code is f
 		term_new = term_old;
 		// ECHO disables echoing keys the user presses
 		// ECHOE echos backspace, ECHOK echos kill, ECHONL echos new line
-		term_new.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+		term_new.c_lflag |= ICANON | ISIG;
+		term_new.c_lflag &= ~ECHOK;
+		if (echo) {
+			term_new.c_lflag |= ECHO | ECHOCTL | ECHOE | ECHONL;
+		} else {
+			term_new.c_lflag &= ~(ECHO | ECHOCTL | ECHOE | ECHONL);
+		}
 		errno = 0;
 		if (tcsetattr(input_fd, TCSANOW, &term_new) != 0) return NULL;
 		if (tcgetattr(input_fd, &term_2) != 0) return NULL; // check if it has changed
@@ -30,7 +37,7 @@ char *askpass(FILE *input, FILE *output, const char *prompt) { // some code is f
 	errno = 0;
 	ssize_t len = getline(&pass, &n, input);
 	int e = errno;
-	if (input_istty) fputc('\n', output);
+	if (input_istty && (!echo || feof(input))) fputc('\n', output);
 	fflush(input);
 	fflush(output);
 	if (input_istty) {

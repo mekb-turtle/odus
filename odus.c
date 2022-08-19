@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include "./libaskpass.h"
+#include "./util.h"
 #define ODUS_GROUP "odus"
 #define PROMPT "[odus] password for %s: "
 #define DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"
@@ -27,105 +28,11 @@ Usage: %s [options] [command] [argv]...\n\
 ", argv0);
 	return 2;
 }
-bool str_to_long(const char *str, long *out) {
-	// if all characters in str are numbers, convert to a long, otherwise leave as is
-	bool numeric = 1;
-	size_t len = strlen(str);
-	for (size_t i = 0; i < len; ++i) {
-		if (str[i] < '0' || str[i] > '9') { numeric = 0; break; }
-	}
-	if (numeric) *out = atol(str);
-	return numeric;
-}
-#ifndef DEBUG
-bool getgrouplist_(const char *user, gid_t group, gid_t **groups_, int *ngroups_) {
-	// getgrouplist but we don't know the size yet
-	int cur_ngroups = 0;
-	int result = -1;
-	int ngroups;
-	gid_t *groups = NULL;
-	while (result == -1) {
-		if (groups) free(groups);
-		cur_ngroups += 8;
-		groups = calloc(cur_ngroups, sizeof(gid_t));
-		ngroups = cur_ngroups;
-		result = getgrouplist(user, group, groups, &ngroups);
-	}
-	if (ngroups < 0) return 0;
-	*groups_ = groups;
-	*ngroups_ = ngroups;
-	return 1;
-}
-bool password_check(struct passwd *pw) {
-	char *p = pw->pw_passwd;
-	if (p[0] == 'x' && p[1] == '\0') {
-		errno = 0;
-		struct spwd *spw = getspnam(pw->pw_name);
-		if (errno) { eprintf("getspnam: %s\n",          strerr);      return 0; }
-		if (!spw)  { eprintf("Cannot find shadow %s\n", pw->pw_name); return 0; }
-		p = spw->sp_pwdp;
-	}
-	if (p[0] == '!' || p[0] == '*') {
-		eprintf("Permission denied\n");
-		return 0;
-	} else if (p[0] == '\0') {
-		return 1;
-	}
-	errno = 0;
-	char *prompt = malloc(100);
-	if (errno) { eprintf("malloc: %s\n", strerr); return 0; }
-	sprintf(prompt, PROMPT, pw->pw_name);
-	for (int i = 0; i < 3; ++i) {
-		errno = 0;
-		char *input = askpass(stdin, stderr, prompt);
-		if (errno) { eprintf("askpass: %s\n", strerr); return 0; }
-		if (!input) { return 0; }
-		if (ferror(stdin) || feof(stdin)) return 0;
-		errno = 0;
-		char *c = crypt(input, p);
-		if (errno) { eprintf("crypt: %s\n", strerr); return 0; }
-		if (!c) { eprintf("crypt\n"); return 0; }
-		if (strcmp(p, c) == 0) {
-			return 1;
-		} else {
-			eprintf("Invalid password\n");
-			continue;
-		}
-	}
-	return 0;
-}
-#endif
-char *clone_string(const char *str) {
-	size_t l = strlen(str) + 1;
-	errno = 0;
-	char *clone = malloc(l);
-	if (errno) { eprintf("malloc: %s\n", strerr); return NULL; }
-	memcpy(clone, str, l);
-	if (errno) { eprintf("memcpy: %s\n", strerr); return NULL; }
-	return clone;
-}
-// copy the content of the pointer to another pointer because
-// getpwuid etc will reuse the same pointer
-struct passwd *clone_passwd(struct passwd *ptr) {
-	errno = 0;
-	struct passwd *clone = malloc(sizeof(struct passwd));
-	if (errno) { eprintf("malloc: %s\n", strerr); return NULL; }
-	if (!(clone->pw_name   = clone_string(ptr->pw_name)))   { free(clone); return NULL; }
-	if (!(clone->pw_passwd = clone_string(ptr->pw_passwd))) { free(clone); return NULL; }
-	clone->pw_uid = ptr->pw_uid;
-	clone->pw_gid = ptr->pw_gid;
-	if (!(clone->pw_gecos  = clone_string(ptr->pw_gecos)))  { free(clone); return NULL; }
-	if (!(clone->pw_dir    = clone_string(ptr->pw_dir)))    { free(clone); return NULL; }
-	if (!(clone->pw_shell  = clone_string(ptr->pw_shell)))  { free(clone); return NULL; }
-	return clone;
-}
 int main(int argc, char *argv[]) {
 #define INVALID return usage(argv[0]);
-#ifndef DEBUG
 	if (geteuid() != 0) {
 		eprintf("Must run as setuid root\n"); return 1;
 	}
-#endif
 	if (argc <= 1) INVALID;
 	char *cmd_argv[argc];
 	int cmd_argc = 0;
@@ -184,7 +91,7 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < cmd_argc; ++i) {
 		printf("argv[%i]: %s\n", i, cmd_argv[i]);
 	}
-#else
+#endif
 	if (!keep_flag) {
 		clearenv();
 	}
@@ -217,7 +124,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 		errno = 0;
-		if (password_check(my_pwd) != 1) {
+		if (password_check(my_pwd, PROMPT) != 1) {
 			if (errno) return errno;
 			return 1;
 		}
@@ -232,16 +139,18 @@ int main(int argc, char *argv[]) {
 	errno = 0; if (seteuid(pwd->pw_uid)       != 0) { eprintf("seteuid: %s\n",   strerr); return errno || 1; }
 	errno = 0;
 	if (cwd_flag) {
-		chdir(pwd->pw_dir);
-		if (errno) { eprintf("chdir: %s\n",  strerr); return errno; }
-		setenv("PWD", pwd->pw_dir, 1);
-	} else {
-		char *cwd = malloc(PATH_MAX);
-		if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
-		getcwd(cwd, PATH_MAX);
-		if (errno) { eprintf("getcwd: %s\n", strerr); return errno; }
-		setenv("PWD", cwd, 1);
+		chdir("/");
+		if (errno) { eprintf("chdir: %s\n", strerr); return errno; }
 	}
+	if (cwd_flag) {
+		chdir(pwd->pw_dir);
+		if (errno) { eprintf("chdir: %s\n", strerr); }
+	}
+	char *cwd = malloc(PATH_MAX);
+	if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
+	getcwd(cwd, PATH_MAX);
+	if (errno) { eprintf("getcwd: %s\n", strerr); return errno; }
+	setenv("PWD", cwd, 1);
 	setenv("HOME", pwd->pw_dir, 1);
 	setenv("USER", pwd->pw_name, 1);
 	if (!keep_flag) {
@@ -250,6 +159,5 @@ int main(int argc, char *argv[]) {
 	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);
 	eprintf("execvp: %s: %s\n", cmd_argv[0], strerr);
-#endif
 	return 1;
 }
