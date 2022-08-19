@@ -9,16 +9,23 @@
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [prompt]\n\
+	-e --echo : enables echo\n\
 ", argv0);
 	return 2;
 }
 int main(int argc, char *argv[]) {
 #define INVALID return usage(argv[0]);
 	char *prompt = NULL;
-	bool flag_done;
+	bool flag_done = 0;
+	bool echo_flag = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-' && argv[i][1] != '\0' && !flag_done) {
-			if (argv[i][1] == '-' && argv[i][2] == '\0') flag_done = 1; else INVALID; // -- denotes end of flags
+			if (argv[i][1] == '-' && argv[i][2] == '\0') flag_done = 1; else // -- denotes end of flags
+			if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--echo") == 0) {
+				if (echo_flag) INVALID;
+				echo_flag = 1;
+			} else
+			INVALID;
 		} else {
 			if (prompt) INVALID;
 			prompt = argv[i];
@@ -26,7 +33,7 @@ int main(int argc, char *argv[]) {
 	}
 	if (!prompt) prompt = "Password: ";
 	errno = 0;
-	char *input = askpass(stdin, stderr, prompt, 0);
+	char *input = askpass(stdin, stderr, prompt, echo_flag);
 	if (errno) { eprintf("askpass: %s\n", strerr); return 1; }
 	if (!input) return 1;
 	if (ferror(stdin) || feof(stdin)) return 2;
