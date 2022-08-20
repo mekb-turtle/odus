@@ -33,6 +33,7 @@ char *askpass(FILE *input, FILE *output, const char *prompt, bool echo) { // som
 	char *pass = NULL;
 	size_t n = 0;
 	fputs(prompt, output);
+	fflush(input);
 	fflush(output);
 	errno = 0;
 	ssize_t len = getline(&pass, &n, input);
