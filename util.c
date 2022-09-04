@@ -39,7 +39,7 @@ bool getgrouplist_(const char *user, gid_t group, gid_t **groups_, int *ngroups_
 	*ngroups_ = ngroups;
 	return 1;
 }
-bool password_check(struct passwd *pw, char *prompt) {
+bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	char *p = pw->pw_passwd;
 	if (p[0] == 'x' && p[1] == '\0') {
 		errno = 0;
@@ -60,7 +60,14 @@ bool password_check(struct passwd *pw, char *prompt) {
 	sprintf(prompt_, prompt, pw->pw_name);
 	for (int i = 0; i < 3; ++i) {
 		errno = 0;
-		char *input = askpass(stdin, stderr, prompt_, 0);
+		char *input;
+		if (notty) {
+			input = askpass(stdin, stderr, STDIN_FILENO, prompt_, 0);
+		} else if (tty < 0) {
+			input = askpasstty(prompt_, 0);
+		} else {
+			input = askpasstty_(tty, prompt_, 0);
+		}
 		if (errno) { eprintf("askpass: %s\n", strerr); return 0; }
 		if (!input) { return 0; }
 		if (ferror(stdin) || feof(stdin)) return 0;

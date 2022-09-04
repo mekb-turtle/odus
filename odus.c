@@ -9,6 +9,7 @@
 #include <shadow.h>
 #include <stdint.h>
 #include <limits.h>
+#include <paths.h>
 #include "./libaskpass.h"
 #include "./util.h"
 #define ODUS_GROUP "odus"
@@ -25,6 +26,7 @@ Usage: %s [options] [command] [argv]...\n\
 	-c --cwd : set current working directory to the home directory\n\
 	-u --user [user] : the user to run as, defaults to UID 0, which is usually root\n\
 		if numeric, it'll find a user with the UID, otherwise with that name\n\
+	-t --notty : use stdin/stderr instead of tty for password input\n\
 ", argv0);
 	return 2;
 }
@@ -40,6 +42,7 @@ int main(int argc, char *argv[]) {
 	bool user_flag = 0;
 	bool keep_flag = 0;
 	bool cwd_flag = 0;
+	bool notty_flag = 0;
 	bool flag_done = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (user_flag) {
@@ -59,12 +62,17 @@ int main(int argc, char *argv[]) {
 				if (cwd_flag) INVALID;
 				cwd_flag = 1;
 			} else
+			if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--notty") == 0) {
+				if (notty_flag) INVALID;
+				notty_flag = 1;
+			} else
 			INVALID;
 		} else {
 			flag_done = 1;
 			cmd_argv[cmd_argc++] = argv[i]; // add to argv
 		}
 	}
+	if (user_flag) INVALID;
 	if (cmd_argc <= 0) INVALID;
 	cmd_argv[cmd_argc] = NULL;
 	bool user_numeric = 1;
@@ -124,7 +132,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 		errno = 0;
-		if (password_check(my_pwd, PROMPT) != 1) {
+		if (password_check(my_pwd, PROMPT, notty_flag, -1) != 1) {
 			if (errno) return errno;
 			return 1;
 		}

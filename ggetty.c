@@ -13,6 +13,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <paths.h>
 #include "./libaskpass.h"
 #include "./util.h"
 #define USERNAME_PROMPT "Username: "
@@ -28,8 +29,8 @@ Usage: %s\n\
 	-a --login [user] : login as a specific user by default instead of letting the user decide\n\
 	-n --nopassword : skip asking for a password if --login is supplied\n\
 	-t --term [term] : set TERM variable, default is 'linux'\n\
-	-y --tty [tty] : set the tty to use, must start with '/dev/tty'\n\
-", argv0);
+	-y --tty [tty] : required, set the tty to use, must start with '%s'\n\
+", argv0, _PATH_TTY);
 	return 2;
 }
 int main(int argc, char *argv[]) {
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]) {
 			term = argv[i];
 			term_flag = 0;
 		} else if (tty_flag) {
-			if (strncmp(argv[i], "/dev/tty", 8) != 0) INVALID;
+			if (strncmp(argv[i], _PATH_TTY, strlen(_PATH_TTY)) != 0) INVALID;
 			tty = argv[i];
 			tty_flag = 0;
 		} else if (argv[i][0] == '-' && argv[i][1] != '\0' && !flag_done) {
@@ -102,7 +103,7 @@ int main(int argc, char *argv[]) {
 			username = login_user;
 			eprintf(AUTOLOGIN_TEXT, username);
 		} else {
-			username = askpass(stdin, stderr, USERNAME_PROMPT, 1);
+			username = askpasstty_(fd2, USERNAME_PROMPT, 1);
 			if (feof(stdin)) return 1;
 		}
 		if (!username) return 1;
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
 		clearenv();
 		errno = 0;
 		if (!nopassword_flag) {
-			if (password_check(pwd, PASSWORD_PROMPT) != 1) {
+			if (password_check(pwd, PASSWORD_PROMPT, 0, fd2) != 1) {
 				if (errno) return errno;
 				return 1;
 			}
