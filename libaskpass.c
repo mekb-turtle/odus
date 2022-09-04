@@ -17,6 +17,7 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 		term_new = term_old;
 		// ECHO echos keys the user presses
 		// ECHOE echos backspace, ECHOK echos kill, ECHONL echos new line
+		term_new.c_iflag &= ~(IGNCR | ICRNL);
 		term_new.c_lflag |= ICANON | ISIG;
 		term_new.c_lflag &= ~ECHOK;
 		if (echo) {
@@ -27,6 +28,7 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 		errno = 0;
 		if (tcsetattr(tty, TCSANOW, &term_new) != 0) return NULL;
 		if (tcgetattr(tty, &term_2) != 0) return NULL; // check if it has changed
+		if (term_2.c_iflag != term_new.c_iflag) return NULL;
 		if (term_2.c_lflag != term_new.c_lflag) return NULL;
 	}
 	char *pass = NULL;
@@ -42,6 +44,7 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 	if (input_istty) {
 		if (tcsetattr(tty, TCSANOW, &term_old) != 0) { free(pass); return NULL; }
 		if (tcgetattr(tty, &term_2) != 0) { free(pass); return NULL; } // check if it has changed
+		if (term_2.c_iflag != term_old.c_iflag) { free(pass); return NULL; }
 		if (term_2.c_lflag != term_old.c_lflag) { free(pass); return NULL; }
 	}
 	errno = e;

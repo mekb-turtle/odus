@@ -15,3 +15,4 @@ TODO:
 
 - [ ] pwfeedback, show asterisks instead of blank text when typing the password [odus, askpass, ggetty]
 - [ ] have a cooldown on asking for the password, so it isn't annoying, but could reduce security [odus]
+- [ ] make ggetty not error with ioctl TIOCSCTTY, fix termios bug, shell is glitchy, enter just echos ^M instead [ggetty]

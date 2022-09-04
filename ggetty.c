@@ -90,9 +90,9 @@ int main(int argc, char *argv[]) {
 		int fd2 = open(tty, O_RDWR);
 		if (fd < 0 || fd2 < 0) { eprintf("open: %s: %s\n", strerr, tty); return errno; } errno = 0;
 		if (isatty(fd)   == 0) { eprintf("%s is not a tty\n",      tty); return errno; } errno = 0;
-		if (fchown(fd, 0, 0)            < 0) { eprintf("fchown: %i: %s\n", fd, strerr); return errno; }
-		if (fchmod(fd, S_IWUSR|S_IRUSR) < 0) { eprintf("fchmod: %i: %s\n", fd, strerr); return errno; }
-		if (ioctl(fd, TIOCSCTTY, (void*)1) != 0) { eprintf("ioctl: TIOCSCTTY: %s\n", strerr); } errno = 0;
+		if (chown(tty, 0, 0)            < 0) { eprintf("chown: %s: %s\n", tty, strerr); return errno; }
+		if (chmod(tty, S_IWUSR|S_IRUSR) < 0) { eprintf("chmod: %s: %s\n", tty, strerr); return errno; }
+		if (ioctl(fd, TIOCSCTTY, 1) != 0) { eprintf("ioctl: TIOCSCTTY: %s\n", strerr); } errno = 0;
 		dup2(fd, 0); dup2(fd, 1); dup2(fd, 2);
 		if (fd > 2) close(fd);
 		char *username;
@@ -128,8 +128,8 @@ int main(int argc, char *argv[]) {
 		if (!getgrouplist_(pwd->pw_name, pwd->pw_gid, &groups, &ngroups)) {
 			eprintf("Failed to get groups of %s\n", pwd->pw_name); return 1;
 		}
-		if (fchown(fd2, 1, 0)            < 0) { eprintf("fchown: %i: %s\n", fd2, strerr); return errno; }
-		if (fchmod(fd2, S_IWUSR|S_IRUSR) < 0) { eprintf("fchmod: %i: %s\n", fd2, strerr); return errno; }
+		if (chown(tty, pwd->pw_uid, pwd->pw_gid) < 0) { eprintf("chown: %s: %s\n", tty, strerr); return errno; }
+		if (chmod(tty, S_IWUSR|S_IRUSR)          < 0) { eprintf("chmod: %s: %s\n", tty, strerr); return errno; }
 		errno = 0; if (setgroups(ngroups, groups) != 0) { eprintf("setgroups: %s\n", strerr); return errno || 1; }
 		errno = 0; if (setgid(pwd->pw_gid)        != 0) { eprintf("setgid: %s\n",    strerr); return errno || 1; }
 		errno = 0; if (setegid(pwd->pw_gid)       != 0) { eprintf("setegid: %s\n",   strerr); return errno || 1; }
