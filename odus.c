@@ -12,9 +12,7 @@
 #include <paths.h>
 #include "./libaskpass.h"
 #include "./util.h"
-#define ODUS_GROUP "odus"
-#define PROMPT "\x1b[38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
-#define DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"
+#include "./config.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
@@ -132,7 +130,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 		errno = 0;
-		if (password_check(my_pwd, PROMPT, notty_flag, -1) != 1) {
+		if (password_check(my_pwd, ODUS_PROMPT, notty_flag, -1) != 1) {
 			if (errno) return errno;
 			return 1;
 		}
@@ -162,7 +160,7 @@ int main(int argc, char *argv[]) {
 	setenv("HOME", pwd->pw_dir, 1);
 	setenv("USER", pwd->pw_name, 1);
 	if (!keep_flag) {
-		setenv("PATH", DEFAULT_PATH, 1);
+		setenv("PATH", ODUS_DEFAULT_PATH, 1);
 	}
 	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);

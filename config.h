@@ -1,0 +1,8 @@
+#define GGETTY_USERNAME_PROMPT "Username: "
+#define GGETTY_PASSWORD_PROMPT "Password for %s: "
+#define GGETTY_AUTOLOGIN_TEXT "Autologin: %s\n"
+#define GGETTY_DEFAULT_PATH "/bin:/usr/bin"
+#define ASKPASS_DEFAULT_PROMPT "Password: "
+#define ODUS_GROUP "odus"
+#define ODUS_PROMPT "\x1b[38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
+#define ODUS_DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"

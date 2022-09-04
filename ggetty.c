@@ -16,10 +16,7 @@
 #include <paths.h>
 #include "./libaskpass.h"
 #include "./util.h"
-#define USERNAME_PROMPT "Username: "
-#define PASSWORD_PROMPT "Password for %s: "
-#define AUTOLOGIN_TEXT "Autologin: %s\n"
-#define DEFAULT_PATH "/bin:/usr/bin"
+#include "./config.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
@@ -101,9 +98,9 @@ int main(int argc, char *argv[]) {
 		char *username;
 		if (login_user) {
 			username = login_user;
-			eprintf(AUTOLOGIN_TEXT, username);
+			eprintf(GGETTY_AUTOLOGIN_TEXT, username);
 		} else {
-			username = askpasstty_(fd2, USERNAME_PROMPT, 1);
+			username = askpasstty_(fd2, GGETTY_USERNAME_PROMPT, 1);
 			if (feof(stdin)) return 1;
 		}
 		if (!username) return 1;
@@ -121,7 +118,7 @@ int main(int argc, char *argv[]) {
 		clearenv();
 		errno = 0;
 		if (!nopassword_flag) {
-			if (password_check(pwd, PASSWORD_PROMPT, 0, fd2) != 1) {
+			if (password_check(pwd, GGETTY_PASSWORD_PROMPT, 0, fd2) != 1) {
 				if (errno) return errno;
 				return 1;
 			}
@@ -150,7 +147,7 @@ int main(int argc, char *argv[]) {
 		setenv("PWD", cwd, 1);
 		setenv("HOME", pwd->pw_dir, 1);
 		setenv("USER", pwd->pw_name, 1);
-		setenv("PATH", DEFAULT_PATH, 1);
+		setenv("PATH", GGETTY_DEFAULT_PATH, 1);
 		setenv("TERM", term, 1);
 		errno = 0;
 		execvp(pwd->pw_shell, (char*[]) { pwd->pw_shell, NULL });
