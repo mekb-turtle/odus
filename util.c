@@ -8,6 +8,7 @@
 #include <grp.h>
 #include <shadow.h>
 #include <stdint.h>
+#include "./config.h"
 #include "./libaskpass.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
@@ -78,7 +79,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		if (strcmp(p, c) == 0) {
 			return 1;
 		} else {
-			eprintf("Invalid password\n");
+			eprintf(ODUS_INVALID_PASSWORD);
 			continue;
 		}
 	}
