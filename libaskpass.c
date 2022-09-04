@@ -15,7 +15,7 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 	if (input_istty) {
 		if (tcgetattr(tty, &term_old) != 0) return NULL;
 		term_new = term_old;
-		// ECHO disables echoing keys the user presses
+		// ECHO echos keys the user presses
 		// ECHOE echos backspace, ECHOK echos kill, ECHONL echos new line
 		term_new.c_lflag |= ICANON | ISIG;
 		term_new.c_lflag &= ~ECHOK;
