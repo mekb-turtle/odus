@@ -13,5 +13,5 @@ Basic configuration is done in [config.h](config.h)
 
 TODO:
 
-- [ ] pwfeedback, show asterisks instead of blank text when typing the password
-- [ ] have a cooldown on asking for the password, so it isn't annoying, but could reduce security
+- [ ] pwfeedback, show asterisks instead of blank text when typing the password [odus, askpass, ggetty]
+- [ ] have a cooldown on asking for the password, so it isn't annoying, but could reduce security [odus]
