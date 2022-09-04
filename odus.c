@@ -13,7 +13,7 @@
 #include "./libaskpass.h"
 #include "./util.h"
 #define ODUS_GROUP "odus"
-#define PROMPT "[odus] password for %s: "
+#define PROMPT "\x1b[38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
 #define DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
