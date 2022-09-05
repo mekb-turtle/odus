@@ -31,9 +31,15 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 	bool bksp = 0;
 	char *notation_ = malloc(8);
 	if (!notation_) return 0;
+	fputs(LIBASKPASS_PASSWORD_COLOR, output_f);
 	while (1) {
 		if (feof(input_f)) break;
-		if (ferror(input_f)) { if (input) free(input); return 0; }
+		if (ferror(input_f)) {
+			if (input) free(input);
+			fputs("\x1b[0m", output_f);
+			fflush(output_f);
+			return 0;
+		}
 		input = realloc(input, len + 2);
 		int c = fgetc(input_f);
 		if (c <= 0) continue;
@@ -41,7 +47,12 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 		fflush(output_f);
 		bksp = 0;
 		if (c == '\x0d' || c == '\x0a' || c == '\x04') break;
-		if (c == '\x03' || c == '\x1a' || c == '\x11') { if (input) free(input); return 0; }
+		if (c == '\x03' || c == '\x1a' || c == '\x11') {
+			if (input) free(input);
+			fputs("\x1b[0m", output_f);
+			fflush(output_f);
+			return 0;
+		}
 		else if (c == '\x7f') { if (len > 0) { --len; bksp = 1; }}
 		else if (len >= LIBASKPASS_MAX_LENGTH) continue;
 		else ++len;
@@ -58,23 +69,31 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 					fputs(notation(c, notation_), output_f);
 					break;
 			}
-			fflush(output_f);
-		} else if (LIBASKPASS_ECHO_USE_ASTERISK) {
+		} else if (LIBASKPASS_USE_CHAR) {
 			switch (c) {
 				case '\x7f':
 					if (!bksp) break;
-					fputs("\x08 \x08", output_f);
+					for (size_t i = 0; i < strlen(LIBASKPASS_PASSWORD_CHAR); ++i) {
+						fputs("\x08 \x08", output_f);
+					}
 					break;
 				default:
-					fputc(LIBASKPASS_ASTERISK_CHAR, output_f);
+					fputs(LIBASKPASS_PASSWORD_CHAR, output_f);
 					break;
 			}
-			fflush(output_f);
+		}
+		fflush(output_f);
+	}
+	for (size_t j = 0; j < len; ++j) {
+		for (size_t i = 0; i < strlen(LIBASKPASS_PASSWORD_CHAR); ++i) {
+			fputs("\x08 \x08", output_f);
 		}
 	}
 	input[len] = 0;
 	*str = input;
 	*size = len;
+	fputs("\x1b[0m", output_f);
+	fflush(output_f);
 	return 1;
 }
 char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo) { // some code is from util-linux
