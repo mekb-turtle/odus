@@ -7,3 +7,6 @@
 #define ODUS_PROMPT "\x1b[38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
 #define ODUS_DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"
 #define ODUS_INVALID_PASSWORD "\x1b[38;5;9mIncorrect password\x1b[0m\n"
+#define LIBASKPASS_MAX_LENGTH 4096
+#define LIBASKPASS_ASTERISK_CHAR '*'
+#define LIBASKPASS_ECHO_USE_ASTERISK true

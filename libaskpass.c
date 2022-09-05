@@ -7,24 +7,89 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <paths.h>
+#include "./config.h"
+#include "./libaskpass.h"
+char *notation(char c, char *out) {
+	if (c == 0x7f && c == 0xff) {
+		sprintf(out, "^?");
+	} else if (c > 0x7f) {
+		if (c >= 0xa0) {
+			sprintf(out, "M-%c", c-0x80);
+		} else {
+			sprintf(out, "M-^%c", c-0x40);
+		}
+	} else if (c != '\n' && c < 0x20) {
+		sprintf(out, "^%c", c+0x40);
+	} else {
+		sprintf(out, "%c", c);
+	}
+	return out;
+}
+bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo) {
+	char *input = NULL;
+	size_t len = 0;
+	bool bksp = 0;
+	char *notation_ = malloc(8);
+	if (!notation_) return 0;
+	while (1) {
+		if (feof(input_f)) break;
+		if (ferror(input_f)) { if (input) free(input); return 0; }
+		input = realloc(input, len + 2);
+		int c = fgetc(input_f);
+		if (c <= 0) continue;
+		input[len] = c;
+		fflush(output_f);
+		bksp = 0;
+		if (c == '\x0d' || c == '\x0a' || c == '\x04') break;
+		if (c == '\x03' || c == '\x1a' || c == '\x11') { if (input) free(input); return 0; }
+		else if (c == '\x7f') { if (len > 0) { --len; bksp = 1; }}
+		else if (len >= LIBASKPASS_MAX_LENGTH) continue;
+		else ++len;
+		if (echo) {
+			switch (c) {
+				case '\x7f':
+					if (!bksp) break;
+					c = input[len];
+					for (size_t i = 0; i < strlen(notation(c, notation_)); ++i) {
+						fputs("\x08 \x08", output_f);
+					}
+					break;
+				default:
+					fputs(notation(c, notation_), output_f);
+					break;
+			}
+			fflush(output_f);
+		} else if (LIBASKPASS_ECHO_USE_ASTERISK) {
+			switch (c) {
+				case '\x7f':
+					if (!bksp) break;
+					fputs("\x08 \x08", output_f);
+					break;
+				default:
+					fputc(LIBASKPASS_ASTERISK_CHAR, output_f);
+					break;
+			}
+			fflush(output_f);
+		}
+	}
+	input[len] = 0;
+	*str = input;
+	*size = len;
+	return 1;
+}
 char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo) { // some code is from util-linux
 	if (tty < 0 || !input || !output) return NULL;
 	errno = 0;
 	struct termios term_old, term_new, term_2;
-	int input_istty = isatty(tty);
-	if (input_istty) {
+	int istty = isatty(tty);
+	if (istty) {
 		if (tcgetattr(tty, &term_old) != 0) return NULL;
 		term_new = term_old;
 		// ECHO echos keys the user presses
 		// ECHOE echos backspace, ECHOK echos kill, ECHONL echos new line
 		term_new.c_iflag &= ~(IGNCR | ICRNL);
-		term_new.c_lflag |= ICANON | ISIG;
-		term_new.c_lflag &= ~ECHOK;
-		if (echo) {
-			term_new.c_lflag |= ECHO | ECHOCTL | ECHOE | ECHONL;
-		} else {
-			term_new.c_lflag &= ~(ECHO | ECHOCTL | ECHOE | ECHONL);
-		}
+		term_new.c_lflag |= ISIG;
+		term_new.c_lflag &= ~(ICANON | ECHOK | ECHO | ECHOCTL | ECHOE | ECHONL | IEXTEN);
 		errno = 0;
 		if (tcsetattr(tty, TCSANOW, &term_new) != 0) return NULL;
 		if (tcgetattr(tty, &term_2) != 0) return NULL; // check if it has changed
@@ -32,24 +97,23 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 		if (term_2.c_lflag != term_new.c_lflag) return NULL;
 	}
 	char *pass = NULL;
-	size_t n = 0;
+	size_t len;
 	fflush(input); fflush(output);
 	fputs(prompt, output);
 	fflush(input); fflush(output);
 	errno = 0;
-	ssize_t len = getline(&pass, &n, input);
+	bool res = readline(&len, &pass, input, output, echo);
 	int e = errno;
-	if (input_istty && (!echo || feof(input))) fputc('\n', output);
+	if (istty) fputc('\n', output);
 	fflush(input); fflush(output);
-	if (input_istty) {
+	if (istty) {
 		if (tcsetattr(tty, TCSANOW, &term_old) != 0) { free(pass); return NULL; }
 		if (tcgetattr(tty, &term_2) != 0) { free(pass); return NULL; } // check if it has changed
 		if (term_2.c_iflag != term_old.c_iflag) { free(pass); return NULL; }
 		if (term_2.c_lflag != term_old.c_lflag) { free(pass); return NULL; }
 	}
 	errno = e;
-	if (len < 0 && errno) { free(pass); return NULL; }
-	if (len > 0 && pass[len-1] == '\n') pass[len-1] = '\0';
+	if (!res) { free(pass); return NULL; }
 	return pass;
 }
 char *askpasstty_(int tty, const char *prompt, bool echo) {
