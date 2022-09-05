@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 		errno = 0;
 		struct passwd *pwd = getpwnam(username);
 		if (errno) { eprintf("getpwnam: %s\n", strerr); return errno; }
-		if (!pwd)  { eprintf("User does not exist\n");  return 1; }
+		if (!pwd)  { eprintf(GGETTY_NO_USER);  return 1; }
 		pwd = clone_passwd(pwd);
 #ifdef DEBUG
 		printf("user: %s\n", pwd->pw_name);

@@ -79,7 +79,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		if (strcmp(p, c) == 0) {
 			return 1;
 		} else {
-			eprintf(ODUS_INVALID_PASSWORD);
+			eprintf(UTIL_INVALID_PASSWORD);
 			continue;
 		}
 	}
