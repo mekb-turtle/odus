@@ -15,5 +15,5 @@ TODO:
 
 - [ ] have a cooldown on asking for the password, so it isn't annoying, but could reduce security [odus]
 - [ ] make ggetty not error with ioctl TIOCSCTTY, shell is glitchy [ggetty]
-- [ ] fix termios bug, enter just echos ^M instead in tty [libaskpass]
-- [ ] pwfeedback, show asterisks instead of blank text when typing the password [libaskpass]
+- [x] fix termios bug, enter just echos ^M instead in tty [libaskpass]
+- [x] pwfeedback, show asterisks instead of blank text when typing the password [libaskpass]
