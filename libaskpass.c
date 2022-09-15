@@ -107,8 +107,7 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 		// ECHO echos keys the user presses
 		// ECHOE echos backspace, ECHOK echos kill, ECHONL echos new line
 		term_new.c_iflag &= ~(IGNCR | ICRNL);
-		term_new.c_lflag |= ISIG;
-		term_new.c_lflag &= ~(ICANON | ECHOK | ECHO | ECHOCTL | ECHOE | ECHONL | IEXTEN);
+		term_new.c_lflag &= ~(ISIG | ICANON | ECHOK | ECHO | ECHOCTL | ECHOE | ECHONL | IEXTEN);
 		errno = 0;
 		if (tcsetattr(tty, TCSANOW, &term_new) != 0) return NULL;
 		if (tcgetattr(tty, &term_2) != 0) return NULL; // check if it has changed
