@@ -7,8 +7,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <paths.h>
-#include "./config.h"
 #include "./libaskpass.h"
+extern char *libaskpass_password_color;
+extern size_t libaskpass_max_length;
+extern bool libaskpass_use_char;
+extern char *libaskpass_password_char;
 char *notation(char c, char *out) {
 	if (c == 0x7f && c == 0xff) {
 		sprintf(out, "^?");
@@ -31,7 +34,7 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 	bool bksp = 0;
 	char *notation_ = malloc(8);
 	if (!notation_) return 0;
-	fputs(LIBASKPASS_PASSWORD_COLOR, output_f);
+	fputs(libaskpass_password_color, output_f);
 	while (1) {
 		if (feof(input_f)) break;
 		if (ferror(input_f)) {
@@ -54,7 +57,7 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 			return 0;
 		}
 		else if (c == '\x7f') { if (len > 0) { --len; bksp = 1; }}
-		else if (len >= LIBASKPASS_MAX_LENGTH) continue;
+		else if (len >= libaskpass_max_length) continue;
 		else ++len;
 		if (echo) {
 			switch (c) {
@@ -69,23 +72,23 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 					fputs(notation(c, notation_), output_f);
 					break;
 			}
-		} else if (LIBASKPASS_USE_CHAR) {
+		} else if (libaskpass_use_char) {
 			switch (c) {
 				case '\x7f':
 					if (!bksp) break;
-					for (size_t i = 0; i < strlen(LIBASKPASS_PASSWORD_CHAR); ++i) {
+					for (size_t i = 0; i < strlen(libaskpass_password_char); ++i) {
 						fputs("\x08 \x08", output_f);
 					}
 					break;
 				default:
-					fputs(LIBASKPASS_PASSWORD_CHAR, output_f);
+					fputs(libaskpass_password_char, output_f);
 					break;
 			}
 		}
 		fflush(output_f);
 	}
 	for (size_t j = 0; j < len; ++j) {
-		for (size_t i = 0; i < strlen(LIBASKPASS_PASSWORD_CHAR); ++i) {
+		for (size_t i = 0; i < strlen(libaskpass_password_char); ++i) {
 			fputs("\x08 \x08", output_f);
 		}
 	}

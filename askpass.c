@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "./libaskpass.h"
-#include "./config.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
+extern char *askpass_default_prompt;
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [prompt]\n\
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 			prompt = argv[i];
 		}
 	}
-	if (!prompt) prompt = ASKPASS_DEFAULT_PROMPT;
+	if (!prompt) prompt = askpass_default_prompt;
 	char *input;
 	errno = 0;
 	if (notty_flag) {

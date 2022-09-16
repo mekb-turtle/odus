@@ -16,10 +16,14 @@
 #include <paths.h>
 #include "./libaskpass.h"
 #include "./util.h"
-#include "./config.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
+extern char *ggetty_autologin_text;
+extern char *ggetty_username_prompt;
+extern char *ggetty_no_user;
+extern char *ggetty_password_prompt;
+extern char *ggetty_default_path;
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s\n\
@@ -98,9 +102,9 @@ int main(int argc, char *argv[]) {
 		char *username;
 		if (login_user) {
 			username = login_user;
-			eprintf(GGETTY_AUTOLOGIN_TEXT, username);
+			eprintf(ggetty_autologin_text, username);
 		} else {
-			username = askpasstty_(fd2, GGETTY_USERNAME_PROMPT, 1);
+			username = askpasstty_(fd2, ggetty_username_prompt, 1);
 			if (feof(stdin)) return 1;
 		}
 		if (!username) return 1;
@@ -108,7 +112,7 @@ int main(int argc, char *argv[]) {
 		errno = 0;
 		struct passwd *pwd = getpwnam(username);
 		if (errno) { eprintf("getpwnam: %s\n", strerr); return errno; }
-		if (!pwd)  { eprintf(GGETTY_NO_USER);  return 1; }
+		if (!pwd)  { eprintf(ggetty_no_user);  return 1; }
 		pwd = clone_passwd(pwd);
 #ifdef DEBUG
 		printf("user: %s\n", pwd->pw_name);
@@ -118,7 +122,7 @@ int main(int argc, char *argv[]) {
 		clearenv();
 		errno = 0;
 		if (!nopassword_flag) {
-			if (password_check(pwd, GGETTY_PASSWORD_PROMPT, 0, fd2) != 1) {
+			if (password_check(pwd, ggetty_password_prompt, 0, fd2) != 1) {
 				if (errno) return errno;
 				return 1;
 			}
@@ -147,7 +151,7 @@ int main(int argc, char *argv[]) {
 		setenv("PWD", cwd, 1);
 		setenv("HOME", pwd->pw_dir, 1);
 		setenv("USER", pwd->pw_name, 1);
-		setenv("PATH", GGETTY_DEFAULT_PATH, 1);
+		setenv("PATH", ggetty_default_path, 1);
 		setenv("TERM", term, 1);
 		errno = 0;
 		execvp(pwd->pw_shell, (char*[]) { pwd->pw_shell, NULL });

@@ -8,10 +8,13 @@
 #include <grp.h>
 #include <shadow.h>
 #include <stdint.h>
-#include "./config.h"
 #include "./libaskpass.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
+extern char *util_no_password;
+extern int util_password_tries;
+extern char *util_invalid_password;
+extern char *util_no_more_tries;
 bool str_to_long(const char *str, long *out) {
 	// if all characters in str are numbers, convert to a long, otherwise leave as is
 	bool numeric = 1;
@@ -50,7 +53,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		p = spw->sp_pwdp;
 	}
 	if (p[0] == '!' || p[0] == '*') {
-		eprintf(UTIL_NO_PASSWORD);
+		eprintf(util_no_password);
 		return 0;
 	} else if (p[0] == '\0') {
 		return 1;
@@ -59,7 +62,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	char *prompt_ = malloc(strlen(prompt) + strlen(pw->pw_name));
 	if (errno) { eprintf("malloc: %s\n", strerr); return 0; }
 	sprintf(prompt_, prompt, pw->pw_name);
-	for (int i = 1; i <= UTIL_PASSWORD_TRIES; ++i) {
+	for (int i = 1; i <= util_password_tries; ++i) {
 		errno = 0;
 		char *input;
 		if (notty) {
@@ -79,7 +82,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		if (strcmp(p, c) == 0) {
 			return 1;
 		} else {
-			eprintf(i == UTIL_PASSWORD_TRIES ? UTIL_NO_MORE_TRIES : UTIL_INVALID_PASSWORD);
+			eprintf(i == util_password_tries ? util_no_more_tries : util_invalid_password);
 			continue;
 		}
 	}

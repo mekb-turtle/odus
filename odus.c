@@ -12,10 +12,12 @@
 #include <paths.h>
 #include "./libaskpass.h"
 #include "./util.h"
-#include "./config.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
+extern char *odus_group;
+extern char *odus_prompt;
+extern char *odus_default_path;
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [options] [command] [argv]...\n\
@@ -119,18 +121,18 @@ int main(int argc, char *argv[]) {
 			struct group *grp = getgrgid(groups[i]);
 			if (errno) { eprintf("getgrgid: %s\n",         strerr); return errno; }
 			if (!grp)  { eprintf("Cannot find group %i\n", my_uid); return 1; }
-			if (strcmp(grp->gr_name, ODUS_GROUP) == 0) {
+			if (strcmp(grp->gr_name, odus_group) == 0) {
 				has_group = 1;
 				break;
 			}
 		}
 		free(groups);
 		if (!has_group) {
-			eprintf("%s is not in group %s\n", my_pwd->pw_name, ODUS_GROUP);
+			eprintf("%s is not in group %s\n", my_pwd->pw_name, odus_group);
 			return 1;
 		}
 		errno = 0;
-		if (password_check(my_pwd, ODUS_PROMPT, notty_flag, -1) != 1) {
+		if (password_check(my_pwd, odus_prompt, notty_flag, -1) != 1) {
 			if (errno) return errno;
 			return 1;
 		}
@@ -160,7 +162,7 @@ int main(int argc, char *argv[]) {
 	setenv("HOME", pwd->pw_dir, 1);
 	setenv("USER", pwd->pw_name, 1);
 	if (!keep_flag) {
-		setenv("PATH", ODUS_DEFAULT_PATH, 1);
+		setenv("PATH", odus_default_path, 1);
 	}
 	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);
