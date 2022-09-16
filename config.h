@@ -8,6 +8,9 @@
 #define ODUS_PROMPT "\x1b[0;38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
 #define ODUS_DEFAULT_PATH "/bin:/sbin:/usr/bin:/usr/sbin"
 #define UTIL_INVALID_PASSWORD "\x1b[0;38;5;9mIncorrect password\x1b[0m\n"
+#define UTIL_NO_MORE_TRIES "\x1b[0;38;5;9mToo many incorrect attempts\x1b[0m\n"
+#define UTIL_NO_PASSWORD "\x1b[0;38;5;9mPermission denied\x1b[0m\n"
+#define UTIL_PASSWORD_TRIES 3
 #define LIBASKPASS_MAX_LENGTH 4096
 #define LIBASKPASS_PASSWORD_CHAR "*"
 #define LIBASKPASS_PASSWORD_COLOR "\x1b[0;38;5;10m"

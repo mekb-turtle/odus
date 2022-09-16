@@ -50,7 +50,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		p = spw->sp_pwdp;
 	}
 	if (p[0] == '!' || p[0] == '*') {
-		eprintf("Permission denied\n");
+		eprintf(UTIL_NO_PASSWORD);
 		return 0;
 	} else if (p[0] == '\0') {
 		return 1;
@@ -59,7 +59,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	char *prompt_ = malloc(strlen(prompt) + strlen(pw->pw_name));
 	if (errno) { eprintf("malloc: %s\n", strerr); return 0; }
 	sprintf(prompt_, prompt, pw->pw_name);
-	for (int i = 0; i < 3; ++i) {
+	for (int i = 1; i <= UTIL_PASSWORD_TRIES; ++i) {
 		errno = 0;
 		char *input;
 		if (notty) {
@@ -79,7 +79,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		if (strcmp(p, c) == 0) {
 			return 1;
 		} else {
-			eprintf(UTIL_INVALID_PASSWORD);
+			eprintf(i == UTIL_PASSWORD_TRIES ? UTIL_NO_MORE_TRIES : UTIL_INVALID_PASSWORD);
 			continue;
 		}
 	}
