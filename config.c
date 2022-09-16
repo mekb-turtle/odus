@@ -9,6 +9,12 @@ char *askpass_default_prompt = "Password: ";
 char *odus_group = "odus";
 char *odus_prompt = "\x1b[0;38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: ";
 char *odus_default_path = "/bin:/sbin:/usr/bin:/usr/sbin";
+char *odus_env_keep[] = {
+		"EDITOR", "SSH_CLIENT", "SSH_CONNECTION", "SSH_TTY", "TERM", "CLICOLOR", "COLORS",
+		"TERMINFO", "XAUTHORIZATION", "XAUTHORITY", "TZ", "LANG", "LC_ALL", "PATH", "HOSTNAME",
+		"LS_COLORS", "EXA_COLORS", "DISPLAY", "GTK2_RC_FILES", "XCOMPOSEFILE",
+		"XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_SESSION_TYPE", "XDG_CACHE_HOME",
+		"XDG_STATE_HOME", "XDG_RUNTIME_DIR", NULL };
 char *util_invalid_password = "\x1b[0;38;5;9mIncorrect password\x1b[0m\n";
 char *util_no_more_tries = "\x1b[0;38;5;9mToo many incorrect attempts\x1b[0m\n";
 char *util_no_password = "\x1b[0;38;5;9mPermission denied\x1b[0m\n";

@@ -15,14 +15,17 @@
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
+extern char **environ;
 extern char *odus_group;
 extern char *odus_prompt;
 extern char *odus_default_path;
+extern char *odus_env_keep[];
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [options] [command] [argv]...\n\
-	-k --keep : keep environment variables\n\
-		HOME, USER, and PWD are set by default\n\
+	-k --keep : keep all environment variables\n\
+	-r --reset : reset all environment variables\n\
+		HOME, USER, LOGNAME and PWD are set by default\n\
 	-c --cwd : set current working directory to the home directory\n\
 	-u --user [user] : the user to run as, defaults to UID 0, which is usually root\n\
 		if numeric, it'll find a user with the UID, otherwise with that name\n\
@@ -41,6 +44,7 @@ int main(int argc, char *argv[]) {
 	char *user_str = NULL;
 	bool user_flag = 0;
 	bool keep_flag = 0;
+	bool reset_flag = 0;
 	bool cwd_flag = 0;
 	bool notty_flag = 0;
 	bool flag_done = 0;
@@ -58,6 +62,10 @@ int main(int argc, char *argv[]) {
 				if (keep_flag) INVALID;
 				keep_flag = 1;
 			} else
+			if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--reset") == 0) {
+				if (reset_flag) INVALID;
+				reset_flag = 1;
+			} else
 			if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--cwd") == 0) {
 				if (cwd_flag) INVALID;
 				cwd_flag = 1;
@@ -72,6 +80,7 @@ int main(int argc, char *argv[]) {
 			cmd_argv[cmd_argc++] = argv[i]; // add to argv
 		}
 	}
+	if (keep_flag && reset_flag) INVALID;
 	if (user_flag) INVALID;
 	if (cmd_argc <= 0) INVALID;
 	cmd_argv[cmd_argc] = NULL;
@@ -100,8 +109,34 @@ int main(int argc, char *argv[]) {
 		printf("argv[%i]: %s\n", i, cmd_argv[i]);
 	}
 #endif
-	if (!keep_flag) {
+	if (reset_flag) {
 		clearenv();
+	} else if (!keep_flag) {
+		for (size_t i = 0; environ[i]; ++i) {
+			errno = 0;
+			char *o = environ[i];
+			char *eq = strchr(o, '=');
+			if (eq) {
+				size_t l = eq - o;
+				bool b = 0;
+				for (size_t j = 0; odus_env_keep[j]; ++j) {
+					if (memcmp(o, odus_env_keep[j], l) == 0) {
+						b = 1;
+						break;
+					}
+				}
+				if (b) continue;
+				char *e = malloc(l + 1);
+				if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
+				memcpy(e, o, l);
+				e[l] = '\0';
+				o = e;
+			}
+			errno = 0;
+			unsetenv(o);
+			if (eq) free(o);
+			if (errno) { eprintf("unsetenv: %s\n", strerr); return errno; }
+		}
 	}
 	uid_t my_uid = getuid();
 	errno = 0;
@@ -149,11 +184,10 @@ int main(int argc, char *argv[]) {
 	if (cwd_flag) {
 		chdir("/");
 		if (errno) { eprintf("chdir: %s\n", strerr); return errno; }
-	}
-	if (cwd_flag) {
 		chdir(pwd->pw_dir);
 		if (errno) { eprintf("chdir: %s\n", strerr); }
 	}
+	errno = 0;
 	char *cwd = malloc(PATH_MAX);
 	if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
 	getcwd(cwd, PATH_MAX);
@@ -161,6 +195,7 @@ int main(int argc, char *argv[]) {
 	setenv("PWD", cwd, 1);
 	setenv("HOME", pwd->pw_dir, 1);
 	setenv("USER", pwd->pw_name, 1);
+	setenv("LOGNAME", pwd->pw_name, 1);
 	if (!keep_flag) {
 		setenv("PATH", odus_default_path, 1);
 	}
