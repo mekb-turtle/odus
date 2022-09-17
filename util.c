@@ -65,12 +65,16 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	for (int i = 1; i <= util_password_tries; ++i) {
 		errno = 0;
 		char *input;
-		if (notty) {
+		bool notty_ = 0;
+		if (!notty) {
+			if (tty < 0) {
+				input = askpasstty(prompt_, 0, &notty_);
+			} else {
+				input = askpasstty_(tty, prompt_, 0, &notty_);
+			}
+		}
+		if (notty_ || notty) {
 			input = askpass(stdin, stderr, STDIN_FILENO, prompt_, 0);
-		} else if (tty < 0) {
-			input = askpasstty(prompt_, 0);
-		} else {
-			input = askpasstty_(tty, prompt_, 0);
 		}
 		if (errno) { eprintf("askpass: %s\n", strerr); return 0; }
 		if (!input) { return 0; }

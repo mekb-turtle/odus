@@ -137,16 +137,17 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 	if (!res) { free(pass); return NULL; }
 	return pass;
 }
-char *askpasstty_(int tty, const char *prompt, bool echo) {
-	if (tty < 0) return NULL;
+char *askpasstty_(int tty, const char *prompt, bool echo, bool *notty) {
+	*notty = 0;
+	if (tty < 0) { *notty = 1; return NULL; }
 	//FILE *ttyfile = fdopen(tty, "rwb");
 	FILE *input = fdopen(tty, "rb");
 	FILE *output = fdopen(tty, "wb");
 	char *res = askpass(input, output, tty, prompt, echo);
 	return res;
 }
-char *askpasstty(const char *prompt, bool echo) {
+char *askpasstty(const char *prompt, bool echo, bool *notty) {
 	errno = 0;
 	int tty = open(_PATH_TTY, O_RDWR|O_CLOEXEC);
-	return askpasstty_(tty, prompt, echo);
+	return askpasstty_(tty, prompt, echo, notty);
 }
