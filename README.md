@@ -1,5 +1,5 @@
 # odus
-A sudo alternative for Linux
+A light-weight and highly configurable sudo alternative for Linux written in C
 
 ![Screenshot of odus being used in the terminal](screenshot.png)
 
