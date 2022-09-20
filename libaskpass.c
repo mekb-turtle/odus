@@ -7,11 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <paths.h>
+#include "./config.h"
 #include "./libaskpass.h"
-extern char *libaskpass_password_color;
-extern size_t libaskpass_max_length;
-extern bool libaskpass_use_char;
-extern char *libaskpass_password_char;
 char *notation(char c, char *out) {
 	if (c == 0x7f && c == 0xff) {
 		sprintf(out, "^?");
@@ -138,8 +135,8 @@ char *askpass(FILE *input, FILE *output, int tty, const char *prompt, bool echo)
 	return pass;
 }
 char *askpasstty_(int tty, const char *prompt, bool echo, bool *notty) {
-	*notty = 0;
-	if (tty < 0) { *notty = 1; return NULL; }
+	if (notty) *notty = 0;
+	if (tty < 0) { if (notty) { *notty = 1; } return NULL; }
 	//FILE *ttyfile = fdopen(tty, "rwb");
 	FILE *input = fdopen(tty, "rb");
 	FILE *output = fdopen(tty, "wb");

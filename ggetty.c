@@ -14,16 +14,12 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <paths.h>
+#include "./config.h"
 #include "./libaskpass.h"
 #include "./util.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
-extern char *ggetty_autologin_text;
-extern char *ggetty_username_prompt;
-extern char *ggetty_no_user;
-extern char *ggetty_password_prompt;
-extern char *ggetty_default_path;
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s\n\
@@ -104,7 +100,7 @@ int main(int argc, char *argv[]) {
 			username = login_user;
 			eprintf(ggetty_autologin_text, username);
 		} else {
-			username = askpasstty_(fd2, ggetty_username_prompt, 1);
+			username = askpasstty_(fd2, ggetty_username_prompt, 1, NULL);
 			if (feof(stdin)) return 1;
 		}
 		if (!username) return 1;

@@ -10,16 +10,13 @@
 #include <stdint.h>
 #include <limits.h>
 #include <paths.h>
+#include "./config.h"
 #include "./libaskpass.h"
 #include "./util.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
 //#define DEBUG
 extern char **environ;
-extern char *odus_group;
-extern char *odus_prompt;
-extern char *odus_default_path;
-extern char *odus_env_keep[];
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [options] [command] [argv]...\n\
@@ -86,7 +83,7 @@ int main(int argc, char *argv[]) {
 	cmd_argv[cmd_argc] = NULL;
 	bool user_numeric = 1;
 	uid_t user_id;
-	if (user_str) { long a; user_numeric = str_to_long(user_str, &a); user_id = a; }
+	if (user_str) { long long a; user_numeric = str_to_number(user_str, &a); user_id = a; }
 	else user_id = 0;
 	struct passwd *pwd;
 	errno = 0;
@@ -119,6 +116,7 @@ int main(int argc, char *argv[]) {
 			if (eq) {
 				size_t l = eq - o;
 				bool b = 0;
+				odus_env_keep_define;
 				for (size_t j = 0; odus_env_keep[j]; ++j) {
 					if (memcmp(o, odus_env_keep[j], l) == 0) {
 						b = 1;

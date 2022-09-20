@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "./config.h"
 #include "./libaskpass.h"
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr (errno == 0 ? "Error" : strerror(errno))
-extern char *askpass_default_prompt;
 int usage(char *argv0) {
 	eprintf("\
 Usage: %s [prompt]\n\
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 	if (notty_flag) {
 		input = askpass(stdin, stderr, STDIN_FILENO, prompt, echo_flag);
 	} else {
-		input = askpasstty(prompt, echo_flag);
+		input = askpasstty(prompt, echo_flag, 0);
 	}
 	if (errno) { eprintf("askpass: %s\n", strerr); return 1; }
 	if (!input) return 1;
