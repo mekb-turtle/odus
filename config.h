@@ -4,7 +4,7 @@
 #define ggetty_default_path "/bin:/usr/bin"
 #define ggetty_no_user "\x1b[38;5;9mUser does not exist\x1b[0m\n"
 #define askpass_default_prompt "Password: "
-#define odus_group "odus"
+#define odus_group "wheel"
 #define odus_prompt "\x1b[0;38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
 #define odus_default_path "/bin:/sbin:/usr/bin:/usr/sbin"
 #define odus_env_keep_define char *odus_env_keep[] = {\

@@ -33,7 +33,6 @@ bool str_to_number(const char *str, long *out) {
 }
 bool getgrouplist_(const char *user, gid_t group, gid_t **groups_, int *ngroups_) {
 	// getgrouplist but we don't know the size yet
-	int cur_ngroups = 0;
 	int ngroups;
 	gid_t *groups = calloc(NGROUPS_MAX, sizeof(gid_t));
 	if (!groups) {
@@ -43,7 +42,7 @@ bool getgrouplist_(const char *user, gid_t group, gid_t **groups_, int *ngroups_
 	ngroups = NGROUPS_MAX;
 	int result = getgrouplist(user, group, groups, &ngroups);
 	if (result == -1 && ngroups > 0) {
-		groups = realloc(groups, ngroups * sizeof(gid_t))
+		groups = realloc(groups, ngroups * sizeof(gid_t));
 		result = getgrouplist(user, group, groups, &ngroups);
 	}
 	if (result < 0) {
@@ -57,14 +56,20 @@ bool getgrouplist_(const char *user, gid_t group, gid_t **groups_, int *ngroups_
 }
 bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	char *p = pw->pw_passwd;
+	struct spwd *spw = NULL;
 	if (p[0] == 'x' && p[1] == '\0') {
 		errno = 0;
-		struct spwd *spw = getspnam(pw->pw_name);
+		spw = getspnam(pw->pw_name);
 		if (errno) { eprintf("getspnam: %s\n",          strerr);      return 0; }
 		if (!spw)  { eprintf("Cannot find shadow %s\n", pw->pw_name); return 0; }
 		p = spw->sp_pwdp;
 	}
-#define CLEAR() explicit_bzero(spw, sizeof(struct spwd))
+#define CLEAR() {\
+		if (spw) {\
+			explicit_bzero(spw->sp_namp, strlen(spw->sp_namp));\
+			explicit_bzero(spw->sp_pwdp, strlen(spw->sp_pwdp));\
+			explicit_bzero(spw, sizeof(struct spwd));\
+		}}
 	if (p[0] == '!' || p[0] == '*') {
 		CLEAR();
 		eprintf(util_no_password);

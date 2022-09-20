@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 	cmd_argv[cmd_argc] = NULL;
 	bool user_numeric = 1;
 	uid_t user_id;
-	if (user_str) { long long a; user_numeric = str_to_number(user_str, &a); user_id = a; }
+	if (user_str) { long a; user_numeric = str_to_number(user_str, &a); user_id = a; }
 	else user_id = 0;
 	struct passwd *pwd;
 	errno = 0;
