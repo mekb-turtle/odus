@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 		}
 		free(groups);
 		if (!has_group) {
-			eprintf("%s is not in group %s\n", my_pwd->pw_name, odus_group);
+			eprintf(odus_not_in_group, my_pwd->pw_name, odus_group);
 			return 1;
 		}
 		errno = 0;

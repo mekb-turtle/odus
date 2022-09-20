@@ -7,6 +7,7 @@
 #define odus_cannot_find_user_id "\x1b[0;38;5;9mCannot find user ID %i\x1b[0m\n"
 #define odus_cannot_find_user_name "\x1b[0;38;5;9mCannot find user %s\x1b[0m\n"
 #define odus_execvp_error "\x1b[0;38;5;9m%s: %s\x1b[0m\n"
+#define odus_not_in_group "\x1b[0;38;5;9m%s is not in group %s\x1b[0m\n"
 #define odus_group "wheel"
 #define odus_prompt "\x1b[0;38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
 #define odus_default_path "/bin:/sbin:/usr/bin:/usr/sbin"
