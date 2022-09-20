@@ -89,12 +89,12 @@ int main(int argc, char *argv[]) {
 	errno = 0;
 	if (user_numeric) {
 		pwd = getpwuid(user_id);
-		if (errno) { eprintf("getpwuid: %s\n",        strerr);   return errno; }
-		if (!pwd)  { eprintf("Cannot find user %i\n", user_id);  return 1; }
+		if (errno) { eprintf("getpwuid: %s\n",           strerr);   return errno; }
+		if (!pwd)  { eprintf(odus_cannot_find_user_id,   user_id);  return 1; }
 	} else {
 		pwd = getpwnam(user_str);
-		if (errno) { eprintf("getpwnam: %s\n",        strerr);   return errno; }
-		if (!pwd)  { eprintf("Cannot find user %s\n", user_str); return 1; }
+		if (errno) { eprintf("getpwnam: %s\n",           strerr);   return errno; }
+		if (!pwd)  { eprintf(odus_cannot_find_user_name, user_str); return 1; }
 	}
 	pwd = clone_passwd(pwd);
 #ifdef DEBUG
@@ -199,6 +199,6 @@ int main(int argc, char *argv[]) {
 	}
 	errno = 0;
 	execvp(cmd_argv[0], cmd_argv);
-	eprintf("execvp: %s: %s\n", cmd_argv[0], strerr);
+	eprintf(odus_execvp_error, cmd_argv[0], strerr);
 	return 1;
 }
