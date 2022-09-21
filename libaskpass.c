@@ -46,19 +46,20 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 		input[len] = c;
 		fflush(output_f);
 		bksp = 0;
-		if (c == '\x0d' || c == '\x0a' || c == '\x04') break;
+		if (c == '\x0d' || c == '\x0a' || c == '\x04' || c == '\x00') break;
 		if (c == '\x03' || c == '\x1a' || c == '\x11') {
 			if (input) free(input);
 			fputs("\x1b[0m", output_f);
 			fflush(output_f);
 			return 0;
 		}
-		else if (c == '\x7f') { if (len > 0) { --len; bksp = 1; }}
+		else if (c == '\x7f' || c == '\x08') { if (len > 0) { --len; input[len] = 0; bksp = 1; }}
 		else if (len >= libaskpass_max_length) continue;
 		else ++len;
 		if (echo) {
 			switch (c) {
 				case '\x7f':
+				case '\x08':
 					if (!bksp) break;
 					c = input[len];
 					for (size_t i = 0; i < strlen(notation(c, notation_)); ++i) {
@@ -72,6 +73,7 @@ bool readline(size_t *size, char **str, FILE *input_f, FILE *output_f, bool echo
 		} else if (libaskpass_use_char) {
 			switch (c) {
 				case '\x7f':
+				case '\x08':
 					if (!bksp) break;
 					for (size_t i = 0; i < strlen(libaskpass_password_char); ++i) {
 						fputs("\x08 \x08", output_f);

@@ -51,5 +51,7 @@ int main(int argc, char *argv[]) {
 	if (!input) return 1;
 	if (ferror(stdin) || feof(stdin)) return 2;
 	fputs(input, stdout);
+	explicit_bzero(input, strlen(input));
+	free(input);
 	fputc('\n', stdout);
 }

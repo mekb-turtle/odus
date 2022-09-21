@@ -82,9 +82,11 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	char *prompt_ = malloc(strlen(prompt) + strlen(pw->pw_name));
 	if (errno) { eprintf("malloc: %s\n", strerr); CLEAR(); return 0; }
 	sprintf(prompt_, prompt, pw->pw_name);
+#define CLEAR_() { CLEAR(); free(prompt_); prompt_ = NULL; }
 	for (int i = 1; i <= util_password_tries; ++i) {
 		errno = 0;
-		char *input;
+		char *input = NULL;
+#define CLEAR_INPUT() { if (input) { explicit_bzero(input, strlen(input)); free(input); } }
 		bool notty_ = 0;
 		if (!notty) {
 			if (tty < 0) {
@@ -93,22 +95,25 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 				input = askpasstty_(tty, prompt_, 0, &notty_);
 			}
 		}
-		if (notty_ || notty) {
+		if ((notty_ || notty) && !input) {
 			input = askpass(stdin, stderr, STDIN_FILENO, prompt_, 0);
 		}
-		if (errno) { eprintf("askpass: %s\n", strerr); CLEAR(); free(prompt_); return 0; }
-		if (!input) { CLEAR(); free(prompt_); return 0; }
-		if (ferror(stdin) || feof(stdin)) { CLEAR(); free(prompt_); return 0; }
+		if (errno) { eprintf("askpass: %s\n", strerr); CLEAR_INPUT(); CLEAR_(); return 0; }
+		if (!input) { CLEAR_INPUT(); CLEAR_(); return 0; }
+		if (ferror(stdin) || feof(stdin)) { CLEAR_INPUT(); CLEAR_(); return 0; }
 		errno = 0;
 		char *c = crypt(input, p);
-		if (!c) { eprintf("crypt: %s\n", strerr); CLEAR(); free(prompt_); return 0; }
+		if (!c) { eprintf("crypt: %s\n", strerr); CLEAR_INPUT(); CLEAR_(); return 0; }
 		if (strcmp(p, c) == 0) {
-			CLEAR();
+			CLEAR_INPUT();
+			CLEAR_();
 			explicit_bzero(c, strlen(c));
-			free(prompt_);
 			return 1;
 		} else {
 			explicit_bzero(c, strlen(c));
+			CLEAR_INPUT();
+			free(prompt_);
+			prompt_ = NULL;
 			eprintf(i == util_password_tries ? util_no_more_tries : util_invalid_password);
 			continue;
 		}

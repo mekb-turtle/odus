@@ -107,6 +107,8 @@ int main(int argc, char *argv[]) {
 		if (username[0] == '\0') return 1;
 		errno = 0;
 		struct passwd *pwd = getpwnam(username);
+		explicit_bzero(username, strlen(username));
+		free(username);
 		if (errno) { eprintf("getpwnam: %s\n", strerr); return errno; }
 		if (!pwd)  { eprintf(ggetty_no_user);  return 1; }
 		pwd = clone_passwd(pwd);
