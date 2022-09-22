@@ -112,14 +112,11 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 		} else {
 			explicit_bzero(c, strlen(c));
 			CLEAR_INPUT();
-			free(prompt_);
-			prompt_ = NULL;
 			eprintf(i == util_password_tries ? util_no_more_tries : util_invalid_password);
 			continue;
 		}
 	}
-	CLEAR();
-	free(prompt_);
+	CLEAR_();
 	return 0;
 }
 char *clone_string(const char *str) {
