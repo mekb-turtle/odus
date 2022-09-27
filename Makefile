@@ -2,7 +2,7 @@ CC=cc
 DESTDIR=/usr/local
 
 CFLAGS=-Wall -O2
-LFLAGS=-lm
+LFLAGS=
 LFLAGS_ASKPASS=
 LFLAGS_ODUS=-lcrypt
 LFLAGS_GGETTY=-lcrypt
