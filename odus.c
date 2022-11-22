@@ -109,31 +109,30 @@ int main(int argc, char *argv[]) {
 	if (reset_flag) {
 		clearenv();
 	} else if (!keep_flag) {
-		for (size_t i = 0; environ[i]; ++i) {
+		for (size_t i = 0; environ[i];) {
 			errno = 0;
 			char *o = environ[i];
 			char *eq = strchr(o, '=');
 			if (eq) {
 				size_t l = eq - o;
 				bool b = 0;
-				odus_env_keep_define;
-				for (size_t j = 0; odus_env_keep[j]; ++j) {
-					if (memcmp(o, odus_env_keep[j], l) == 0) {
+				char *odus_env_keep_[] = odus_env_keep;
+				for (size_t j = 0; odus_env_keep_[j]; ++j) {
+					if (memcmp(o, odus_env_keep_[j], l) == 0) {
 						b = 1;
 						break;
 					}
 				}
-				if (b) continue;
+				if (b) { ++i; continue; }
 				char *e = malloc(l + 1);
-				if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
+				if (!e) { eprintf("malloc: %s\n", strerr); return errno; }
 				memcpy(e, o, l);
 				e[l] = '\0';
-				o = e;
+				errno = 0;
+				unsetenv(e);
+				if (errno) { eprintf("unsetenv: %s\n", strerr); return errno; }
+				free(e);
 			}
-			errno = 0;
-			unsetenv(o);
-			if (eq) free(o);
-			if (errno) { eprintf("unsetenv: %s\n", strerr); return errno; }
 		}
 	}
 	uid_t my_uid = getuid();
@@ -187,7 +186,7 @@ int main(int argc, char *argv[]) {
 	}
 	errno = 0;
 	char *cwd = malloc(PATH_MAX);
-	if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
+	if (!cwd) { eprintf("malloc: %s\n", strerr); return errno; }
 	getcwd(cwd, PATH_MAX);
 	if (errno) { eprintf("getcwd: %s\n", strerr); return errno; }
 	setenv("PWD", cwd, 1);

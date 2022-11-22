@@ -80,7 +80,7 @@ bool password_check(struct passwd *pw, char *prompt, bool notty, int tty) {
 	}
 	errno = 0;
 	char *prompt_ = malloc(strlen(prompt) + strlen(pw->pw_name));
-	if (errno) { eprintf("malloc: %s\n", strerr); CLEAR(); return 0; }
+	if (!prompt_) { eprintf("malloc: %s\n", strerr); CLEAR(); return 0; }
 	sprintf(prompt_, prompt, pw->pw_name);
 #define CLEAR_() { CLEAR(); free(prompt_); prompt_ = NULL; }
 	for (int i = 1; i <= util_password_tries; ++i) {
@@ -133,7 +133,7 @@ char *clone_string(const char *str) {
 struct passwd *clone_passwd(struct passwd *ptr) {
 	errno = 0;
 	struct passwd *clone = malloc(sizeof(struct passwd));
-	if (errno) { eprintf("malloc: %s\n", strerr); return NULL; }
+	if (!clone) { eprintf("malloc: %s\n", strerr); return NULL; }
 	if (!(clone->pw_name   = clone_string(ptr->pw_name)))   { free(clone); return NULL; }
 	if (!(clone->pw_passwd = clone_string(ptr->pw_passwd))) { free(clone); return NULL; }
 	clone->pw_uid = ptr->pw_uid;

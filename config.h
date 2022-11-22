@@ -11,7 +11,7 @@
 #define odus_group "wheel"
 #define odus_prompt "\x1b[0;38;5;7m[odus] \x1b[0mpassword for \x1b[38;5;14m%s\x1b[0m: "
 #define odus_default_path "/bin:/sbin:/usr/bin:/usr/sbin"
-#define odus_env_keep_define char *odus_env_keep[] = {\
+#define odus_env_keep {\
 		"EDITOR", "SSH_CLIENT", "SSH_CONNECTION", "SSH_TTY", "TERM", "CLICOLOR", "COLORS",\
 		"TERMINFO", "XAUTHORIZATION", "XAUTHORITY", "TZ", "LANG", "LC_ALL", "PATH", "HOSTNAME",\
 		"LS_COLORS", "EXA_COLORS", "DISPLAY", "GTK2_RC_FILES", "XCOMPOSEFILE",\

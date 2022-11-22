@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 		chdir(pwd->pw_dir);
 		if (errno) { eprintf("chdir: %s\n", strerr); }
 		char *cwd = malloc(PATH_MAX);
-		if (errno) { eprintf("malloc: %s\n", strerr); return errno; }
+		if (!cwd) { eprintf("malloc: %s\n", strerr); return errno; }
 		getcwd(cwd, PATH_MAX);
 		if (errno) { eprintf("getcwd: %s\n", strerr); return errno; }
 		setenv("PWD", cwd, 1);
