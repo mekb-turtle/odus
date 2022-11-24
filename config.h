@@ -15,8 +15,11 @@
 		"EDITOR", "SSH_CLIENT", "SSH_CONNECTION", "SSH_TTY", "TERM", "CLICOLOR", "COLORS",\
 		"TERMINFO", "XAUTHORIZATION", "XAUTHORITY", "TZ", "LANG", "LC_ALL", "PATH", "HOSTNAME",\
 		"LS_COLORS", "EXA_COLORS", "DISPLAY", "GTK2_RC_FILES", "XCOMPOSEFILE",\
+		NULL }
+/*
 		"XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_SESSION_TYPE", "XDG_CACHE_HOME",\
 		"XDG_STATE_HOME", "XDG_RUNTIME_DIR", NULL }
+*/
 #define util_invalid_password "\x1b[0;38;5;9mIncorrect password\x1b[0m\n"
 #define util_no_more_tries "\x1b[0;38;5;9mToo many incorrect attempts\x1b[0m\n"
 #define util_no_password "\x1b[0;38;5;9mPermission denied\x1b[0m\n"
