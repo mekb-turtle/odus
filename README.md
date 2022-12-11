@@ -11,7 +11,7 @@ This project has three programs
 
 Basic configuration is done in [config.h](config.h)
 
-#### This project has not been audited for bugs and vulnerabilites, I don't recommend using this on systems that you care about security
+#### This project has not been audited for bugs and vulnerabilites, I don't recommend using this on systems that you care about security. I recommend using doas instead.
 
 TODO:
 
